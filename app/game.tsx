@@ -1188,6 +1188,17 @@ export default function HrantWorldsGame() {
                   </span>
                 </div>
               )}
+              <p className="author-credit">
+                Ստեղծել է{" "}
+                <a
+                  href="https://github.com/kristinemartirosyan2021-lgtm"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Kristine Martirosyan
+                </a>{" "}
+                · © 2026
+              </p>
             </section>
           )}
 
