@@ -5,6 +5,13 @@ export const metadata: Metadata = {
   title: "Hrant Worlds — հայկական արկածային խաղ",
   description:
     "Անցիր 10 աշխարհ, հավաքիր էներգիան և բացահայտիր գաղտնի սենյակները։",
+  authors: [
+    {
+      name: "Kristine Martirosyan",
+      url: "https://github.com/kristinemartirosyan2021-lgtm",
+    },
+  ],
+  creator: "Kristine Martirosyan",
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",

@@ -2,6 +2,7 @@
   "name": "site-creator-vinext-starter",
   "version": "0.1.0",
   "private": true,
+  "author": "Kristine Martirosyan (https://github.com/kristinemartirosyan2021-lgtm)",
   "engines": {
     "node": ">=22.13.0"
   },
