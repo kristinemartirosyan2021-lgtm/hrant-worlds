@@ -8,6 +8,10 @@ export class InputManager {
     this.mouse = { dx: 0, dy: 0, left: false, right: false, leftPressed: false, rightPressed: false, wheel: 0 };
     this.locked = false;
     this.enabled = true;
+    // Touch / virtual input (filled by TouchControls).
+    this.touch = false;
+    this.look = { yaw: 0, pitch: 0 };          // radians accumulated this frame
+    this.axis = { x: 0, y: 0, active: false, sprint: false };
     this.onLockChange = null;
 
     window.addEventListener('keydown', (e) => {
@@ -51,7 +55,17 @@ export class InputManager {
     });
   }
 
+  // Virtual key press/release used by on-screen buttons.
+  vDown(code) {
+    if (!this.keys.has(code)) this.pressed.add(code);
+    this.keys.add(code);
+  }
+  vUp(code) {
+    if (this.keys.delete(code)) this.released.add(code);
+  }
+
   requestLock() {
+    if (this.touch) return;
     try {
       const p = this.canvas.requestPointerLock({ unadjustedMovement: true });
       if (p && p.catch) p.catch(() => { try { this.canvas.requestPointerLock(); } catch (e) { /* ignore */ } });
@@ -71,5 +85,6 @@ export class InputManager {
     this.mouse.dx = this.mouse.dy = 0;
     this.mouse.leftPressed = this.mouse.rightPressed = false;
     this.mouse.wheel = 0;
+    this.look.yaw = this.look.pitch = 0;
   }
 }

@@ -14,7 +14,7 @@ const DEFAULT = () => ({
   },
   daily: { date: '', missions: [] },
   achievements: {},
-  settings: { sensitivity: 1.0, volume: 0.8, music: 0.5, quality: 'high', invertY: false },
+  settings: { sensitivity: 1.0, volume: 0.8, music: 0.5, quality: 'high', invertY: false, touchSens: 1.0, aimAssist: true, btnScale: 1.0, qualityAuto: true },
   seenIntro: false,
 });
 

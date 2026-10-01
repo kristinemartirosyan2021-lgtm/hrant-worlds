@@ -86,6 +86,7 @@ export class Actor {
     if (this.aimF > 0.5) s = Math.min(s, 2.9);
     if (this.healing) s = 1.8;
     if (def) s *= def.speedMul;
+    if (I.speedScale && !this.ctrl.crouching) s *= I.speedScale;
     return s;
   }
 

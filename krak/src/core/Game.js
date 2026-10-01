@@ -15,6 +15,7 @@ import { ZoneSystem } from '../gameplay/ZoneSystem.js';
 import { MatchManager } from '../gameplay/MatchManager.js';
 import { Progression } from '../gameplay/Progression.js';
 import { UIManager } from '../ui/UIManager.js';
+import { TouchControls, detectTouch } from '../ui/TouchControls.js';
 
 const $ = (id) => document.getElementById(id);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -33,10 +34,34 @@ export class Game {
     this.pathBudget = 3;
     this.screen = 'boot';
     this.debug = /[?&]debug/.test(location.search);
+    // Mobile / touch detection.
+    this.touch = detectTouch();
+    this.input.touch = this.touch;
+    document.body.classList.toggle('touch', this.touch);
+    const st = this.save.data.settings;
+    if (this.touch && st.qualityAuto) st.quality = 'medium';
+    this.resScale = 1;
+    this.frameTimes = [];
+    this.bodyState = '';
+    this.preventBrowserGestures();
+  }
+
+  // Block page scroll, pinch zoom, double-tap zoom and text selection while playing.
+  preventBrowserGestures() {
+    const scrollable = (t) => t && t.closest && t.closest('.panels, .rs-inner, .pause-inner, .tabs, input');
+    document.addEventListener('touchmove', (e) => { if (e.touches.length > 1 || !scrollable(e.target)) e.preventDefault(); }, { passive: false });
+    document.addEventListener('gesturestart', (e) => e.preventDefault(), { passive: false });
+    document.addEventListener('gesturechange', (e) => e.preventDefault(), { passive: false });
+    document.addEventListener('dblclick', (e) => e.preventDefault(), { passive: false });
+    document.addEventListener('selectstart', (e) => { if (!(e.target.closest && e.target.closest('input'))) e.preventDefault(); });
+    document.addEventListener('contextmenu', (e) => e.preventDefault());
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden && this.match && this.match.state === 'playing') this.pause();
+    });
   }
 
   async boot() {
-    const r = (this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: true, powerPreference: 'high-performance' }));
+    const r = (this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: !(this.touch && this.save.data.settings.quality === 'low'), powerPreference: 'high-performance' }));
     r.outputColorSpace = THREE.SRGBColorSpace;
     r.toneMapping = THREE.ACESFilmicToneMapping;
     r.toneMappingExposure = 1.02;
@@ -75,6 +100,7 @@ export class Game {
     this.progression = new Progression(this.save);
     this.director = new Director(this);
     this.ui.minimap.bake();
+    this.touchUI = new TouchControls(this);
     this.applyQuality();
     addEventListener('resize', () => this.resize());
     this.resize();
@@ -109,10 +135,22 @@ export class Game {
   applyQuality() {
     const q = this.save.data.settings.quality;
     const dpr = window.devicePixelRatio || 1;
-    const pr = q === 'low' ? Math.min(dpr, 1) * 0.75 : q === 'medium' ? Math.min(dpr, 1) : Math.min(dpr, 1.5);
-    this.renderer.setPixelRatio(pr);
+    // Phones have very high DPR; rendering at ~1x CSS pixels (plus dynamic resolution) keeps 60 FPS.
+    const cap = this.touch ? { low: 0.8, medium: 1.0, high: 1.35 } : { low: 0.75, medium: 1, high: 1.5 };
+    this.basePR = Math.min(dpr, cap[q]) * (q === 'low' && !this.touch ? 1 : 1);
+    this.renderer.setPixelRatio(this.basePR * this.resScale);
     this.renderer.shadowMap.enabled = q !== 'low';
     this.sun.castShadow = q !== 'low';
+    const ext = q === 'high' ? 70 : 50;
+    const sc = this.sun.shadow.camera;
+    sc.left = -ext; sc.right = ext; sc.top = ext; sc.bottom = -ext; sc.updateProjectionMatrix();
+    // Scale content density.
+    const dens = { low: 0.35, medium: 0.7, high: 1 }[q];
+    if (this.world.vegetation.grass) this.world.vegetation.grass.count = Math.floor(this.world.vegetation.grassMax * dens);
+    this.fx.add.density = this.fx.alpha.density = { low: 0.5, medium: 0.8, high: 1 }[q];
+    this.actorCull = { low: 170, medium: 240, high: 420 }[q];
+    this.shadowNear = { low: 0, medium: 35, high: 70 }[q];
+    this.scene.fog.density = q === 'low' ? 0.0062 : 0.0052;
     const size = q === 'high' ? 2048 : 1024;
     if (this.sun.shadow.mapSize.x !== size) {
       this.sun.shadow.mapSize.set(size, size);
@@ -223,6 +261,7 @@ export class Game {
   async startMatch() {
     if (this.screen === 'loading') return;
     this.audio.init();
+    if (this.touch) this.enterFullscreen();
     this.screen = 'loading';
     this.ui.show('gate', false);
     this.ui.show('intro', false);
@@ -243,8 +282,26 @@ export class Game {
     this.screen = 'match';
   }
 
+  // Mobile: go fullscreen and lock to landscape where the browser allows it.
+  enterFullscreen() {
+    const de = document.documentElement;
+    try {
+      const req = de.requestFullscreen || de.webkitRequestFullscreen;
+      if (req && !document.fullscreenElement) {
+        const pr = req.call(de, { navigationUI: 'hide' });
+        if (pr && pr.then) pr.then(() => this.lockLandscape()).catch(() => this.lockLandscape());
+        else this.lockLandscape();
+      } else this.lockLandscape();
+    } catch (e) { /* ignore */ }
+  }
+  lockLandscape() {
+    try { if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => {}); } catch (e) { /* ignore */ }
+    setTimeout(() => { this.resize(); this.touchUI.layout(); }, 300);
+  }
+
   pause() {
     if (this.match.state !== 'playing') return;
+    if (this.touchUI) this.touchUI.reset();
     this.paused = true;
     this.ui.show('pause');
     $('pauseSettings').classList.remove('show');
@@ -254,6 +311,7 @@ export class Game {
     this.paused = false;
     this.ui.show('pause', false);
     this.input.requestLock();
+    this.clock.getDelta();
   }
 
   quitMatch() {
@@ -264,7 +322,9 @@ export class Game {
 
   // ---------------------------------------------------------------- loop
   loop() {
-    const rawDt = Math.min(this.clock.getDelta(), 0.05);
+    const realDt = this.clock.getDelta();
+    const rawDt = Math.min(realDt, 0.05);
+    this.dynamicResolution(realDt);
     if (!this.paused) this.step(rawDt);
     this.renderer.render(this.scene, this.camera);
     this.input.endFrame();
@@ -301,11 +361,66 @@ export class Game {
     this.world.update(dt, this.camera);
     this.updateSun();
     this.ui.update(rawDt);
+    if (this.touchUI) this.touchUI.update();
+    this.updateLOD();
+    this.updateBodyState();
+  }
+
+  // Distance culling / shadow LOD for characters (big draw-call saver on phones).
+  updateLOD() {
+    const c = this.camera.position;
+    const cull2 = (this.actorCull || 400) ** 2, sh2 = (this.shadowNear ?? 70) ** 2;
+    for (const a of this.actors) {
+      if (a.isPlayer) continue;
+      const p = a.ctrl.pos;
+      const d2 = (p.x - c.x) ** 2 + (p.y - c.y) ** 2 + (p.z - c.z) ** 2;
+      const root = a.model.root;
+      const vis = d2 < cull2 && this.match.state !== 'idle';
+      if (root.visible !== vis) root.visible = vis;
+      const cast = d2 < sh2;
+      if (a.model.castingShadow !== cast) {
+        a.model.castingShadow = cast;
+        root.traverse((o) => { if (o.isMesh) o.castShadow = cast; });
+      }
+    }
+  }
+
+  updateBodyState() {
+    const m = this.match.state;
+    const key = `${m}|${this.paused}|${this.screen}`;
+    if (key === this.bodyState) return;
+    this.bodyState = key;
+    const b = document.body.classList;
+    b.toggle('in-match', m === 'deploy' || m === 'playing' || m === 'ended');
+    b.toggle('match-ended', m === 'ended');
+    b.toggle('paused', this.paused);
+    b.toggle('loading-match', this.screen === 'loading');
+    if (m !== 'playing' && this.touchUI) this.touchUI.reset();
+    if (this.touchUI && b.contains('in-match')) requestAnimationFrame(() => this.touchUI.layout());
+  }
+
+  // Keeps frame rate smooth on weaker phones by scaling render resolution (60 FPS target).
+  dynamicResolution(dt) {
+    if (this.match.state !== 'playing' || this.paused) return;
+    const ft = this.frameTimes;
+    ft.push(dt);
+    if (ft.length < 90) return;
+    const avg = ft.reduce((a, b) => a + b, 0) / ft.length;
+    ft.length = 0;
+    const min = this.touch ? 0.6 : 0.75;
+    let s = this.resScale;
+    if (avg > 1 / 45) s = Math.max(min, s - 0.1);
+    else if (avg < 1 / 57) s = Math.min(1, s + 0.05);
+    if (s !== this.resScale) {
+      this.resScale = s;
+      this.renderer.setPixelRatio(this.basePR * s);
+      this.resize();
+    }
   }
 
   // Debug/test helper: advance game logic quickly without rendering.
   simulate(seconds, dt = 1 / 30) {
-    for (let t = 0; t < seconds; t += dt) this.step(dt);
+    for (let t = 0; t < seconds; t += dt) { this.step(dt); this.input.endFrame(); }
   }
 
   updateSun() {

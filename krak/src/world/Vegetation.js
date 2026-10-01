@@ -220,6 +220,8 @@ export class Vegetation {
       i++;
     }
     mesh.count = i;
+    this.grass = mesh;
+    this.grassMax = i;
     mesh.receiveShadow = true;
     W.group.add(mesh);
   }

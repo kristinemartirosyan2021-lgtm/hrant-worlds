@@ -111,7 +111,9 @@ export class WeaponSystem {
     if (intent.reload) this.startReload();
     if (this.switchLeft > 0 || this.reloadLeft > 0 || a.healing) return;
 
-    const wants = def.auto ? intent.fire : intent.firePressed;
+    // On touch screens holding the fire button repeats semi-auto weapons at a natural cadence.
+    const touchHold = a.isPlayer && a.game.input.touch && intent.fire && this.sinceShot > Math.max(60 / def.rpm, def.id === 'pistol' ? 0.2 : 0);
+    const wants = def.auto ? intent.fire : intent.firePressed || touchHold;
     if (wants && this.cooldown <= 0) {
       if (w.mag <= 0) {
         if (intent.firePressed) {

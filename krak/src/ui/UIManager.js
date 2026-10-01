@@ -138,6 +138,14 @@ export class UIManager {
     ];
     $('statGrid').innerHTML = items.map(([k, v]) => `<div class="stat"><b>${v}</b><small>${k}</small></div>`).join('');
     this.buildSettings($('settingsBox'));
+    if (g.touch && !this.touchHelp) {
+      this.touchHelp = true;
+      document.querySelector('.controls-grid').innerHTML = [
+        ['ՁԱԽ ՄԱՏ', 'Ջոյսթիք՝ շարժվել'], ['ՋՈՅՍԹԻՔԸ ՎԵՐ', 'Վազք'], ['ԱՋ ԿՈՂՄ', 'Սահեցրու՝ նայել 360°'],
+        ['ԿՐԱԿ', 'Պահիր և սահեցրու՝ կրակել ու նշանառել'], ['ՆՇԱՆ', 'Նշանառում (միացնել/անջատել)'], ['ՆՌՆԱԿ', 'Պահիր՝ հետագիծ, բաց թող՝ նետել'],
+        ['✋', 'Հպիր հուշմանը՝ վերցնել'], ['1 2 3', 'Հպիր զենքին՝ փոխել'], ['ՔԱՐՏԵԶ', 'Հպիր փոքր քարտեզին'],
+      ].map(([k, v]) => `<div><kbd>${k}</kbd> ${v}</div>`).join('');
+    }
   }
 
   toastMenu(text) {
@@ -158,17 +166,22 @@ export class UIManager {
       range('volume', 'ՁԱՅՆԻ ԲԱՐՁՐՈՒԹՅՈՒՆ', 0, 1, 0.05, pct) +
       range('music', 'ԵՐԱԺՇՏՈՒԹՅՈՒՆ', 0, 1, 0.05, pct) +
       `<div class="row"><span>ԳՐԱՖԻԿԱՅԻ ՈՐԱԿ</span><div class="seg">${['low', 'medium', 'high'].map((q, i) => `<button data-q="${q}" class="${s.quality === q ? 'on' : ''}">${['ՑԱԾՐ', 'ՄԻՋԻՆ', 'ԲԱՐՁՐ'][i]}</button>`).join('')}</div><output></output></div>` +
+      (g.touch ? range('touchSens', 'ՀՊՄԱՆ ԶԳԱՅՈՒՆՈՒԹՅՈՒՆ', 0.3, 2.5, 0.05, (v) => Number(v).toFixed(2)) +
+        range('btnScale', 'ԿՈՃԱԿՆԵՐԻ ՉԱՓ', 0.8, 1.3, 0.05, pct) +
+        `<div class="row"><span>ՆՇԱՆԱՌՄԱՆ ՕԳՆԱԿԱՆ</span><div class="seg"><button data-aa="1" class="${s.aimAssist ? 'on' : ''}">ՄԻԱՑՎԱԾ</button><button data-aa="0" class="${!s.aimAssist ? 'on' : ''}">ԱՆՋԱՏՎԱԾ</button></div><output></output></div>` : '') +
       `<div class="row"><span>ՇՐՋԵԼ Y ԱՌԱՆՑՔԸ</span><div class="seg"><button data-inv="0" class="${!s.invertY ? 'on' : ''}">ՈՉ</button><button data-inv="1" class="${s.invertY ? 'on' : ''}">ԱՅՈ</button></div><output></output></div>`;
     for (const inp of box.querySelectorAll('input[type=range]')) {
       inp.oninput = () => {
         s[inp.dataset.k] = parseFloat(inp.value);
         const out = inp.parentElement.querySelector('output');
-        out.textContent = inp.dataset.k === 'sensitivity' ? Number(inp.value).toFixed(2) : pct(inp.value);
+        out.textContent = inp.dataset.k === 'sensitivity' || inp.dataset.k === 'touchSens' ? Number(inp.value).toFixed(2) : pct(inp.value);
+        if (inp.dataset.k === 'btnScale' && g.touchUI) g.touchUI.layout();
         g.audio.applySettings();
         g.save.save();
       };
     }
-    for (const b of box.querySelectorAll('[data-q]')) b.onclick = () => { s.quality = b.dataset.q; g.save.save(); g.applyQuality(); this.buildSettings(box); };
+    for (const b of box.querySelectorAll('[data-q]')) b.onclick = () => { s.quality = b.dataset.q; s.qualityAuto = false; g.save.save(); g.applyQuality(); this.buildSettings(box); };
+    for (const b of box.querySelectorAll('[data-aa]')) b.onclick = () => { s.aimAssist = b.dataset.aa === '1'; g.save.save(); this.buildSettings(box); };
     for (const b of box.querySelectorAll('[data-inv]')) b.onclick = () => { s.invertY = b.dataset.inv === '1'; g.save.save(); this.buildSettings(box); };
   }
 
@@ -417,6 +430,22 @@ export class UIManager {
     });
   }
 
+  // Cached DOM writes: skip identical updates (saves layout work on phones).
+  txt(id, v) {
+    const c = this.cache || (this.cache = {});
+    const k = 't' + id;
+    if (c[k] === v) return;
+    c[k] = v;
+    $(id).textContent = v;
+  }
+  sty(id, prop, v) {
+    const c = this.cache || (this.cache = {});
+    const k = id + prop;
+    if (c[k] === v) return;
+    c[k] = v;
+    $(id).style[prop] = v;
+  }
+
   // ---------------------------------------------------------------- per-frame HUD
   update(dt) {
     const g = this.game;
@@ -427,30 +456,30 @@ export class UIManager {
     if (hp < this.lastHp) this.hpLag = Math.max(this.hpLag, this.lastHp);
     this.lastHp = hp;
     this.hpLag += (hp - this.hpLag) * Math.min(1, dt * 2.5);
-    $('hHpFill').style.width = `${hp}%`;
-    $('hHpLag').style.width = `${Math.max(hp, this.hpLag)}%`;
-    $('hHpText').textContent = Math.ceil(hp);
+    this.sty('hHpFill', 'width', `${hp}%`);
+    this.sty('hHpLag', 'width', `${Math.max(hp, this.hpLag)}%`);
+    this.txt('hHpText', Math.ceil(hp));
     $('hHpFill').parentElement.classList.toggle('low', hp < 30);
     const ar = p.health.armor, he = p.health.helmet;
-    $('hArmorFill').style.width = ar.level ? `${(ar.dur / ar.max) * 100}%` : '0%';
+    this.sty('hArmorFill', 'width', ar.level ? `${(ar.dur / ar.max) * 100}%` : '0%');
     $('hVest').className = `gear-ic l${ar.level}`;
     $('hVest').querySelector('b').textContent = ar.level || '—';
     $('hHelmet').className = `gear-ic l${he.level}`;
     $('hHelmet').querySelector('b').textContent = he.level || '—';
-    $('hName').textContent = p.name;
+    this.txt('hName', p.name);
     // weapon
     const inv = p.inv, w = inv.weapon;
     if (w) {
       const def = WEAPONS[w.id];
-      $('hWName').textContent = def.name;
-      $('hWName').style.color = RARITY[w.rarity].css;
-      $('hWType').textContent = `${def.type} · ${RARITY[w.rarity].name}`;
-      $('hMag').textContent = w.mag;
+      this.txt('hWName', def.name);
+      this.sty('hWName', 'color', RARITY[w.rarity].css);
+      this.txt('hWType', `${def.type} · ${RARITY[w.rarity].name}`);
+      this.txt('hMag', w.mag);
       $('hMag').classList.toggle('low', w.mag <= Math.ceil(magSize(w) * 0.25));
-      $('hRes').textContent = inv.ammo[def.ammo];
+      this.txt('hRes', inv.ammo[def.ammo]);
     }
-    $('hNades').textContent = inv.grenades;
-    $('hMed').textContent = inv.medkits;
+    this.txt('hNades', inv.grenades);
+    this.txt('hMed', inv.medkits);
     const key = inv.slots.map((s) => (s ? `${s.id}${s.rarity}${s.mag}` : '-')).join('|') + inv.current + JSON.stringify(inv.ammo);
     if (key !== this.slotCache) {
       this.slotCache = key;
@@ -469,12 +498,12 @@ export class UIManager {
       }
     }
     // timer & zone
-    $('hTime').textContent = fmtTime(g.match.time);
+    this.txt('hTime', fmtTime(g.match.time));
     const z = g.zone;
     const zi = $('zoneInfo');
-    if (z.done) { $('zoneText').textContent = 'ՎԵՐՋՆԱԿԱՆ ԳՈՏԻ'; zi.classList.add('shrink'); }
-    else if (z.shrinking) { $('zoneText').textContent = `ԳՈՏԻՆ ՓՈՔՐԱՆՈՒՄ Է՝ ${fmtTime(z.timeLeft)}`; zi.classList.add('shrink'); }
-    else { $('zoneText').textContent = `ԳՈՏԻՆ ԿՓՈՔՐԱՆԱ՝ ${fmtTime(z.timeLeft)}`; zi.classList.remove('shrink'); }
+    if (z.done) { this.txt('zoneText', 'ՎԵՐՋՆԱԿԱՆ ԳՈՏԻ'); zi.classList.add('shrink'); }
+    else if (z.shrinking) { this.txt('zoneText', `ԳՈՏԻՆ ՓՈՔՐԱՆՈՒՄ Է՝ ${fmtTime(z.timeLeft)}`); zi.classList.add('shrink'); }
+    else { this.txt('zoneText', `ԳՈՏԻՆ ԿՓՈՔՐԱՆԱ՝ ${fmtTime(z.timeLeft)}`); zi.classList.remove('shrink'); }
     // crosshair
     const ch = $('crosshair');
     const spread = clamp(p.spreadPx(g.camera, innerHeight), 3, 120);
@@ -491,7 +520,7 @@ export class UIManager {
       const pr = this.progress;
       pr.t += dt;
       const k = clamp(pr.t / pr.dur, 0, 1);
-      $('prFill').style.strokeDashoffset = `${163.4 * (1 - k)}`;
+      this.sty('prFill', 'strokeDashoffset', `${163.4 * (1 - k)}`);
       if (k >= 1 || !pr.alive()) { this.progress = null; $('progressRing').classList.remove('show'); $('hHpFill').parentElement.classList.remove('heal'); }
     }
     // interaction prompt
@@ -503,14 +532,17 @@ export class UIManager {
     } else pr.classList.remove('show');
     // vignettes
     this.hurt = Math.max(0, this.hurt - dt * 1.8);
-    $('vigHurt').style.opacity = this.hurt;
+    this.sty('vigHurt', 'opacity', this.hurt);
     const low = hp < 30 && p.alive ? (0.45 + Math.sin(g.time * 6) * 0.2) * (1 - hp / 30 + 0.3) : 0;
-    $('vigLow').style.opacity = low;
+    this.sty('vigLow', 'opacity', low);
     g.audio.heartbeat(dt, hp < 30 && p.alive && g.match.state === 'playing');
     const outside = p.alive && g.zone.outside(p.ctrl.pos) && g.match.state === 'playing';
-    $('vigZone').style.opacity = outside ? 1 : 0;
+    this.sty('vigZone', 'opacity', outside ? 1 : 0);
     $('zoneWarn').classList.toggle('show', outside);
     $('clickToLock').classList.toggle('show', g.match.state === 'playing' && !g.input.locked && !g.paused);
-    this.minimap.draw(dt);
+    // Minimap at ~30 Hz on phones.
+    this.mmAcc = (this.mmAcc || 0) + dt;
+    this.mmFrame = (this.mmFrame || 0) + 1;
+    if (!g.touch || this.mmFrame % 2 === 0 || this.bigMapOpen) { this.minimap.draw(this.mmAcc); this.mmAcc = 0; }
   }
 }

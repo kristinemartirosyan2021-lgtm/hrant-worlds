@@ -2,7 +2,12 @@
 <html lang="hy">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#070605">
+  <meta name="format-detection" content="telephone=no">
   <title>ԿՐԱԿ — Մնա վերջինը</title>
   <meta name="description" content="ԿՐԱԿ — հայկական 3D գոյատևման հրաձիգ խաղ բրաուզերում">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23110d0a'/%3E%3Cpath d='M32 8 L40 30 L56 32 L40 34 L32 56 L24 34 L8 32 L24 30 Z' fill='%23ffb22e'/%3E%3C/svg%3E">
@@ -183,6 +188,9 @@
       <div id="countdown"></div>
     </section>
 
+    <!-- TOUCH CONTROLS (mobile) -->
+    <section id="touch"></section>
+
     <!-- END TITLE -->
     <section id="endTitle" class="screen">
       <div class="et-main" id="etMain">ՀԱՂԹԱՆԱԿ</div>
@@ -224,6 +232,7 @@
       <div id="levelUp"><div class="lu-label">ՆՈՐ ՄԱԿԱՐԴԱԿ</div><div class="lu-num" id="luNum">2</div></div>
     </section>
 
+    <div id="rotate"><div class="rot-icon"></div><div class="rot-text">Պտտիր հեռախոսը հորիզոնական</div><div class="rot-sub">Խաղը նախատեսված է հորիզոնական դիրքի համար</div></div>
     <div id="fade"></div>
     <div id="perf"></div>
   </div>

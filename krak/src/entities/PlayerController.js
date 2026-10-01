@@ -12,6 +12,7 @@ const _piv = new THREE.Vector3();
 const _cam = new THREE.Vector3();
 const _h = new THREE.Vector3();
 const DEG = Math.PI / 180;
+const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 const BASE_FOV = 72;
 
 export class Player extends Actor {
@@ -54,18 +55,31 @@ export class Player extends Actor {
       this.pitch -= inp.mouse.dy * sens * (g.save.data.settings.invertY ? -1 : 1);
       this.pitch = clamp(this.pitch, -1.25, 1.2);
     }
+    if (inp.touch) {
+      const fovK = this.fov / BASE_FOV;
+      this.yaw -= inp.look.yaw * fovK;
+      this.pitch -= inp.look.pitch * fovK;
+      this.pitch = clamp(this.pitch, -1.25, 1.2);
+    }
     let fx = 0, fz = 0;
     if (inp.down('KeyW')) fz += 1;
     if (inp.down('KeyS')) fz -= 1;
     if (inp.down('KeyA')) fx -= 1;
     if (inp.down('KeyD')) fx += 1;
+    I.speedScale = 1;
+    if (inp.axis.active) {
+      // Analog joystick: light push walks, full push runs.
+      fx = inp.axis.x; fz = -inp.axis.y;
+      const m = Math.hypot(fx, fz);
+      I.speedScale = m < 0.55 ? 0.55 : 1;
+    }
     const len = Math.hypot(fx, fz);
     if (len > 0) { fx /= len; fz /= len; }
     const s = Math.sin(this.yaw), c = Math.cos(this.yaw);
     // world = forward*fz + right*fx; right = (-c, 0, s)
     I.mx = s * fz - c * fx;
     I.mz = c * fz + s * fx;
-    I.sprint = inp.down('ShiftLeft') || inp.down('ShiftRight');
+    I.sprint = inp.down('ShiftLeft') || inp.down('ShiftRight') || inp.axis.sprint;
     if (I.sprint && fz <= 0) I.sprint = false;
     if (inp.hit('KeyC') || inp.hit('ControlLeft')) this.toggleCrouch = !this.toggleCrouch;
     if (I.sprint && this.toggleCrouch && len > 0) this.toggleCrouch = false;
@@ -88,6 +102,7 @@ export class Player extends Actor {
         if (this.inv.slots[sl]) { I.slot = sl; break; }
       }
     }
+    if (inp.touch && g.save.data.settings.aimAssist) this.aimAssist(dt, I);
     if (inp.hit('KeyF')) g.loot.tryPickup(this);
     if (inp.hit('KeyM')) { this.mapOpen = !this.mapOpen; g.ui.toggleBigMap(this.mapOpen); }
     // grenade: hold to aim, release to throw
@@ -96,6 +111,43 @@ export class Player extends Actor {
       this.grenadeHeld = false;
       this.throwGrenade();
     }
+  }
+
+  // Mobile aim assist: gentle magnetism toward a visible enemy near the crosshair while
+  // aiming or firing. It only nudges the view; bullets still need to physically hit.
+  aimAssist(dt, I) {
+    const g = this.game;
+    const engaged = I.aiming || I.fire;
+    this.assistT = (this.assistT || 0) - dt;
+    if (this.assistT <= 0) {
+      this.assistT = 0.15;
+      this.assistTarget = null;
+      const o = this.shotOrigin(_v);
+      let best = 0.13;
+      for (const a of g.actors) {
+        if (a === this || !a.alive) continue;
+        a.chestWorld(_h);
+        const dx = _h.x - o.x, dy = _h.y - o.y, dz = _h.z - o.z;
+        const d = Math.hypot(dx, dy, dz);
+        if (d > 90 || d < 1) continue;
+        const yawTo = Math.atan2(dx, dz), pitchTo = Math.asin(dy / d);
+        const ang = Math.hypot(wrap(yawTo - this.yaw), pitchTo - this.pitch);
+        if (ang > best) continue;
+        if (!g.world.collision.clear(o.x, o.y, o.z, _h.x, _h.y, _h.z)) continue;
+        best = ang; this.assistTarget = a;
+      }
+    }
+    const t = this.assistTarget;
+    if (!t || !t.alive || !engaged) return;
+    const o = this.shotOrigin(_v);
+    t.chestWorld(_h);
+    const dx = _h.x - o.x, dy = _h.y - o.y, dz = _h.z - o.z;
+    const d = Math.hypot(dx, dy, dz);
+    const yawTo = Math.atan2(dx, dz), pitchTo = Math.asin(dy / d);
+    const k = 1 - Math.exp(-(I.aiming ? 5 : 3) * dt);
+    this.yaw += wrap(yawTo - this.yaw - this.recoilYaw) * k;
+    // compensate for the camera recoil offset so the crosshair (pitch + recoil) settles on target
+    this.pitch += (pitchTo - this.recoilPitch - this.pitch) * k * 0.6;
   }
 
   grenadeVelocity(out) {
@@ -128,7 +180,7 @@ export class Player extends Actor {
   onFired(def, item) {
     const R = RARITY[item.rarity];
     const ads = this.aimF;
-    const crouch = this.ctrl.crouching ? 0.75 : 1;
+    const crouch = (this.ctrl.crouching ? 0.75 : 1) * (this.game.input.touch ? 0.7 : 1);
     const v = def.recoilV * R.recoil * crouch * (1 - ads * 0.3) * DEG;
     const h = def.recoilH * R.recoil * crouch * DEG;
     this.recoilPitch += v;

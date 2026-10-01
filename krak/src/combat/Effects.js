@@ -7,6 +7,7 @@ class ParticleSystem {
   constructor(scene, cap, additive, tex) {
     this.cap = cap;
     this.n = 0;
+    this.density = 1;
     this.P = new Float32Array(cap * 3);
     this.V = new Float32Array(cap * 3);
     this.L = new Float32Array(cap * 2);     // life, maxLife
@@ -42,6 +43,7 @@ class ParticleSystem {
   }
 
   emit(x, y, z, vx, vy, vz, life, s0, s1, r, g, b, a, drag = 1, grav = 0) {
+    if (this.density < 1 && Math.random() > this.density) return;
     let i = this.n;
     if (i >= this.cap) i = Math.floor(Math.random() * this.cap); else this.n++;
     this.P[i * 3] = x; this.P[i * 3 + 1] = y; this.P[i * 3 + 2] = z;
