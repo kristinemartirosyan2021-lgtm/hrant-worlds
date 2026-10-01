@@ -335,6 +335,17 @@ input { font: inherit; }
   line-height: 1.45;
 }
 
+.author-credit {
+  margin: 1rem auto 0;
+  color: #7488af;
+  font-size: 0.69rem;
+  line-height: 1.45;
+}
+
+.author-credit a { color: #afbddb; font-weight: 750; text-decoration: none; }
+.author-credit a:hover,
+.author-credit a:focus-visible { color: #5ef2ff; text-decoration: underline; }
+
 .menu-actions {
   display: grid;
   max-width: 25rem;

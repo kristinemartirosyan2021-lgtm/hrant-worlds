@@ -45,4 +45,4 @@
 
 **Hrant Worlds**-ը ստեղծել է **Kristine Martirosyan**-ը ([@kristinemartirosyan2021-lgtm](https://github.com/kristinemartirosyan2021-lgtm))։
 
-© 2026 Kristine Martirosyan։ Բոլոր իրավունքները պաշտպանված են։
+© 2026 Kristine Martirosyan։ Բոլոր իրավունքները պաշտպանված են ([LICENSE](LICENSE))։
