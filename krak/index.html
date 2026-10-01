@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="hy">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ԿՐԱԿ — Մնա վերջինը</title>
+  <meta name="description" content="ԿՐԱԿ — հայկական 3D գոյատևման հրաձիգ խաղ բրաուզերում">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23110d0a'/%3E%3Cpath d='M32 8 L40 30 L56 32 L40 34 L32 56 L24 34 L8 32 L24 30 Z' fill='%23ffb22e'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="css/style.css">
+  <script type="importmap">
+    { "imports": { "three": "./vendor/three.module.min.js" } }
+  </script>
+</head>
+<body>
+  <div id="app">
+    <canvas id="gl"></canvas>
+    <div id="grade"></div>
+
+    <!-- BOOT -->
+    <section id="boot" class="screen show">
+      <div class="boot-inner">
+        <div class="boot-logo">ԿՐԱԿ</div>
+        <div class="boot-bar"><i id="bootFill"></i></div>
+        <div class="boot-label" id="bootLabel">ԲԵՌՆՎՈՒՄ Է…</div>
+      </div>
+    </section>
+
+    <!-- INTRO -->
+    <section id="intro" class="screen">
+      <canvas id="introParticles"></canvas>
+      <div class="intro-black" id="introBlack"></div>
+      <div class="intro-title">
+        <h1 id="introTitle">ԿՐԱԿ</h1>
+        <h2 id="introSub">Մնա վերջինը</h2>
+      </div>
+      <div class="intro-skip" id="introSkip">ՍԵՂՄԻՐ ՑԱՆԿԱՑԱԾ ՍՏԵՂՆ</div>
+    </section>
+
+    <!-- START GATE (needed for audio unlock) -->
+    <section id="gate" class="screen">
+      <div class="gate-inner">
+        <button class="btn-play" id="gateBtn"><span>ՍԿՍԵԼ</span></button>
+        <div class="gate-hint">Լավագույն փորձառության համար միացրու ձայնը 🎧</div>
+      </div>
+    </section>
+
+    <!-- MAIN MENU / LOBBY -->
+    <section id="menu" class="screen">
+      <header class="topbar">
+        <div class="brand"><b>ԿՐԱԿ</b><span>Մնա վերջինը</span></div>
+        <div class="profile">
+          <div class="lvl-badge"><span id="mLevel">1</span></div>
+          <div class="profile-info">
+            <div class="profile-name" id="mName">ԱՐԵԳ</div>
+            <div class="xpbar"><i id="mXpFill"></i></div>
+            <div class="xptext" id="mXpText">0 / 500 ՓՈՐՁ</div>
+          </div>
+        </div>
+      </header>
+      <nav class="tabs" id="tabs">
+        <button data-tab="play" class="active">ԳԼԽԱՎՈՐ</button>
+        <button data-tab="heroes">ՀԵՐՈՍՆԵՐ</button>
+        <button data-tab="missions">ԱՌԱՋԱԴՐԱՆՔՆԵՐ</button>
+        <button data-tab="achievements">ՆՎԱՃՈՒՄՆԵՐ</button>
+        <button data-tab="stats">ՎԻՃԱԿԱԳՐՈՒԹՅՈՒՆ</button>
+        <button data-tab="settings">ԿԱՐԳԱՎՈՐՈՒՄՆԵՐ</button>
+      </nav>
+      <div class="panels">
+        <div class="panel show" data-panel="play">
+          <div class="hero-card">
+            <div class="hc-role" id="hcRole">Գրոհային</div>
+            <div class="hc-name" id="hcName">ԱՐԵԳ</div>
+            <div class="hc-bio" id="hcBio"></div>
+          </div>
+          <div class="mode-card">
+            <div class="mc-title">ԳՈՅԱՏԵՎՄԱՆ ՄԱՐՏ</div>
+            <div class="mc-sub">16 մարտիկ · 1 քարտեզ · Միայն մեկը կմնա</div>
+            <div class="mc-tags"><span>Հին Թաղ</span><span>Գործարան</span><span>Անցակետ</span><span>Բլուրներ</span><span>Անտառ</span><span>Հին Բերդ</span></div>
+          </div>
+          <div class="daily-mini" id="dailyMini"></div>
+        </div>
+        <div class="panel" data-panel="heroes">
+          <h3>ԸՆՏՐԻՐ ՀԵՐՈՍԻԴ</h3>
+          <div class="hero-grid" id="heroGrid"></div>
+          <h3>ԱՐՏԱՔԻՆ ՏԵՍՔ</h3>
+          <div class="skin-grid" id="skinGrid"></div>
+        </div>
+        <div class="panel" data-panel="missions">
+          <h3>ՕՐՎԱ ԱՌԱՋԱԴՐԱՆՔՆԵՐ</h3>
+          <div id="missionList" class="list"></div>
+          <p class="note">Առաջադրանքները թարմացվում են ամեն օր։</p>
+        </div>
+        <div class="panel" data-panel="achievements">
+          <h3>ՆՎԱՃՈՒՄՆԵՐ</h3>
+          <div id="achList" class="ach-grid"></div>
+        </div>
+        <div class="panel" data-panel="stats">
+          <h3>ՎԻՃԱԿԱԳՐՈՒԹՅՈՒՆ</h3>
+          <div id="statGrid" class="stat-grid"></div>
+        </div>
+        <div class="panel" data-panel="settings">
+          <h3>ԿԱՐԳԱՎՈՐՈՒՄՆԵՐ</h3>
+          <div class="settings" id="settingsBox"></div>
+          <h3>ԿԱՌԱՎԱՐՈՒՄ</h3>
+          <div class="controls-grid">
+            <div><kbd>W A S D</kbd> Շարժվել</div><div><kbd>SHIFT</kbd> Վազել</div>
+            <div><kbd>SPACE</kbd> Ցատկել / Անցնել</div><div><kbd>C</kbd> Կքանստել</div>
+            <div><kbd>R</kbd> Վերալիցքավորում</div><div><kbd>F</kbd> Վերցնել</div>
+            <div><kbd>1 2 3</kbd> Զենքեր</div><div><kbd>G</kbd> Նռնակ (պահիր, բաց թող)</div>
+            <div><kbd>H</kbd> Բուժվել</div><div><kbd>M</kbd> Քարտեզ</div>
+            <div><kbd>ՁԱԽ ԿՈՃԱԿ</kbd> Կրակել</div><div><kbd>ԱՋ ԿՈՃԱԿ</kbd> Նշանառել</div>
+            <div><kbd>ESC</kbd> Դադար</div>
+          </div>
+        </div>
+      </div>
+      <button class="btn-play big" id="playBtn"><span>ԽԱՂԱԼ</span><small>ԳՈՅԱՏԵՎՄԱՆ ՄԱՐՏ</small></button>
+      <div class="menu-foot">© 2026 Kristine Martirosyan · ԿՐԱԿ</div>
+    </section>
+
+    <!-- MATCH LOADING -->
+    <section id="loading" class="screen">
+      <div class="ld-inner">
+        <div class="ld-title">ՍՊԱՍՈՒՄ ԵՆՔ ԽԱՂԱՑՈՂՆԵՐԻՆ</div>
+        <div class="ld-count"><b id="ldCount">1</b> / 16</div>
+        <div class="ld-dots" id="ldDots"></div>
+        <div class="ld-tip" id="ldTip"></div>
+      </div>
+    </section>
+
+    <!-- HUD -->
+    <section id="hud">
+      <div class="hud-top">
+        <div class="pill alive"><i class="ic-person"></i><span id="hAlive">ՄՆԱՑ՝ 16</span></div>
+        <div class="pill kills"><i class="ic-skull"></i><span id="hKills">ՍՊԱՆՈՒԹՅՈՒՆ՝ 0</span></div>
+        <div class="pill timer"><span id="hTime">0:00</span></div>
+      </div>
+      <div class="zone-info" id="zoneInfo"><i></i><span id="zoneText">ԳՈՏԻՆ ԿՓՈՔՐԱՆԱ՝ 0:40</span></div>
+      <div class="minimap-wrap"><canvas id="minimap" width="220" height="220"></canvas><div class="mm-n">Հս</div></div>
+      <div class="killfeed" id="killfeed"></div>
+
+      <div class="hud-bl">
+        <div class="hp-name" id="hName">ԱՐԵԳ</div>
+        <div class="gear">
+          <div class="gear-ic" id="hHelmet" title="Սաղավարտ"><svg viewBox="0 0 24 24"><path d="M4 15a8 8 0 0 1 16 0v1H4z M3 16h18v2H3z" fill="currentColor"/></svg><b>0</b></div>
+          <div class="gear-ic" id="hVest" title="Զրահ"><svg viewBox="0 0 24 24"><path d="M7 3l2 2h6l2-2 3 3v14H4V6z" fill="currentColor"/></svg><b>0</b></div>
+        </div>
+        <div class="bar armor"><i id="hArmorFill"></i></div>
+        <div class="bar hp"><i id="hHpLag"></i><i id="hHpFill"></i><span id="hHpText">100</span></div>
+      </div>
+
+      <div class="hud-bc" id="invSlots">
+        <div class="slot" data-slot="0"><em>1</em><img alt=""><span class="nm"></span><span class="am"></span></div>
+        <div class="slot" data-slot="1"><em>2</em><img alt=""><span class="nm"></span><span class="am"></span></div>
+        <div class="slot" data-slot="2"><em>3</em><img alt=""><span class="nm"></span><span class="am"></span></div>
+        <div class="slot util"><em>H</em><div class="med"></div><span class="am" id="hMed">0</span></div>
+      </div>
+
+      <div class="hud-br">
+        <div class="w-name" id="hWName">ԳԱՅԼ</div>
+        <div class="w-type" id="hWType">Ատրճանակ</div>
+        <div class="ammo"><b id="hMag">12</b><span>/</span><small id="hRes">36</small></div>
+        <div class="nades"><img id="hNadeIc" alt=""><span id="hNades">0</span><em>G</em></div>
+      </div>
+
+      <div id="crosshair"><i class="t"></i><i class="b"></i><i class="l"></i><i class="r"></i><b></b></div>
+      <div id="hitmarker"><i></i><i></i><i></i><i></i></div>
+      <div id="dmgDirs"></div>
+      <div id="dmgNums"></div>
+      <div id="progressRing"><svg viewBox="0 0 60 60"><circle cx="30" cy="30" r="26"/><circle id="prFill" cx="30" cy="30" r="26"/></svg><span id="prText">ՎԵՐԱԼԻՑՔԱՎՈՐՈՒՄ</span></div>
+      <div id="prompt"><kbd>F</kbd><span id="promptText"></span></div>
+      <div id="banner"></div>
+      <div id="areaTitle"></div>
+      <div id="elim"></div>
+      <div id="toasts"></div>
+      <div id="noAmmo">ՓԱՄՓՈՒՇՏ ՉԿԱ</div>
+      <div id="scope"><div class="scope-ring"></div><div class="scope-cross"></div></div>
+      <div id="vigHurt"></div>
+      <div id="vigLow"></div>
+      <div id="vigZone"></div>
+      <div id="zoneWarn">ԴՈՒ ԱՆՎՏԱՆԳ ԳՈՏՈՒՑ ԴՈՒՐՍ ԵՍ</div>
+      <div id="bigmap"><canvas id="bigmapCanvas" width="720" height="720"></canvas></div>
+      <div id="clickToLock">ՍԵՂՄԻՐ՝ ԽԱՂԸ ՇԱՐՈՒՆԱԿԵԼՈՒ ՀԱՄԱՐ</div>
+      <div id="countdown"></div>
+    </section>
+
+    <!-- END TITLE -->
+    <section id="endTitle" class="screen">
+      <div class="et-main" id="etMain">ՀԱՂԹԱՆԱԿ</div>
+      <div class="et-sub" id="etSub">ԴՈՒ ՄՆԱՑԻՐ ՎԵՐՋԻՆԸ</div>
+    </section>
+
+    <!-- PAUSE -->
+    <section id="pause" class="screen">
+      <div class="pause-inner">
+        <h2>ԴԱԴԱՐ</h2>
+        <button class="btn" id="resumeBtn">ՇԱՐՈՒՆԱԿԵԼ</button>
+        <button class="btn" id="pauseSettingsBtn">ԿԱՐԳԱՎՈՐՈՒՄՆԵՐ</button>
+        <div class="settings compact" id="pauseSettings"></div>
+        <button class="btn danger" id="quitBtn">ԼՔԵԼ ՄԱՐՏԸ</button>
+      </div>
+    </section>
+
+    <!-- RESULTS -->
+    <section id="results" class="screen">
+      <div class="rs-inner">
+        <div class="rs-title" id="rsTitle">ՀԱՂԹԱՆԱԿ</div>
+        <div class="rs-place" id="rsPlace">#1</div>
+        <div class="rs-stats" id="rsStats"></div>
+        <div class="rs-rewards">
+          <h3>ՊԱՐԳԵՎՆԵՐ</h3>
+          <div id="rsLines" class="rs-lines"></div>
+          <div class="rs-xp">
+            <div class="lvl-badge sm"><span id="rsLevel">1</span></div>
+            <div class="xpbar wide"><i id="rsXpFill"></i></div>
+            <div class="rs-xptotal" id="rsXpTotal">+0 ՓՈՐՁ</div>
+          </div>
+          <div id="rsUnlocks" class="rs-unlocks"></div>
+        </div>
+        <div class="rs-buttons">
+          <button class="btn-play" id="againBtn"><span>ԿՐԿԻՆ ԽԱՂԱԼ</span></button>
+          <button class="btn" id="lobbyBtn">ՎԵՐԱԴԱՌՆԱԼ ԼՈԲԻ</button>
+        </div>
+      </div>
+      <div id="levelUp"><div class="lu-label">ՆՈՐ ՄԱԿԱՐԴԱԿ</div><div class="lu-num" id="luNum">2</div></div>
+    </section>
+
+    <div id="fade"></div>
+    <div id="perf"></div>
+  </div>
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
