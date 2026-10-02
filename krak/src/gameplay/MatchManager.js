@@ -58,23 +58,13 @@ export class MatchManager {
     g.projectiles.clear();
     g.loot.spawnAll();
     g.zone.reset();
-    // spread spawns
-    const pts = g.world.spawnPoints.slice().sort(() => Math.random() - 0.5);
-    const used = [];
-    const pick = () => {
-      for (const p of pts) {
-        if (used.includes(p)) continue;
-        if (used.every((u) => Math.hypot(u.x - p.x, u.z - p.z) > 30)) { used.push(p); return p; }
-      }
-      const p = pts.find((q) => !used.includes(q)) || pts[0];
-      used.push(p);
-      return p;
-    };
+    // Everyone boards the transport plane.
+    g.drop.setup();
+    const p0 = g.drop.pos;
     for (const a of g.actors) {
-      const p = pick();
-      const jx = rand(-2, 2), jz = rand(-2, 2);
-      const yaw = Math.atan2(-p.x, -p.z) + rand(-0.6, 0.6);
-      a.spawn(p.x + jx, p.z + jz, yaw);
+      a.spawn(p0.x, p0.z, Math.atan2(g.drop.dir.x, g.drop.dir.z));
+      g.drop.board(a);
+      if (!a.isPlayer) g.drop.planBot(a);
     }
     this.time = 0;
     this.kills = 0;
@@ -98,6 +88,7 @@ export class MatchManager {
       this.deployT += dt;
       if (this.deployT > 3.6) {
         this.state = 'playing';
+        g.drop.start();
         g.ui.banner('ՄԱՐՏԸ ՍԿՍՎԵՑ', 'start', 2.5);
         g.audio.uiBig();
         g.input.requestLock();
@@ -106,12 +97,14 @@ export class MatchManager {
     }
     if (this.state === 'playing') {
       this.time += dt;
-      g.zone.update(dt);
+      g.drop.update(dt);
+      // The storm only starts once everyone has landed.
+      if (!g.drop.active || g.drop.landedAll) g.zone.update(dt);
       // Area name when entering a new section.
       const p = this.player.ctrl.pos;
       let area = '';
       for (const a of AREAS) if (Math.hypot(p.x - a.x, p.z - a.z) < a.r * 0.75) area = a.name;
-      if (area && area !== this.areaName) { this.areaName = area; g.ui.areaTitle(area); }
+      if (area && area !== this.areaName && !this.player.air) { this.areaName = area; g.ui.areaTitle(area); }
       if (!area && this.areaName && Math.random() < 0.01) this.areaName = '';
       // Occasional distant rumble to make the battlefield feel alive.
       if (Math.random() < dt * 0.04) g.audio.distantRumble();
@@ -208,6 +201,7 @@ export class MatchManager {
   cleanup() {
     this.state = 'idle';
     const g = this.game;
+    g.drop.stop();
     for (const a of g.actors) a.model.root.visible = false;
     g.loot.clear();
     g.projectiles.clear();

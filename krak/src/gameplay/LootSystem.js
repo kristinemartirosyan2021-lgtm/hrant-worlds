@@ -209,6 +209,7 @@ export class LootSystem {
   }
 
   nearest(actor, maxD = 2.4) {
+    if (actor.air) return null;
     const p = actor.ctrl.pos;
     let best = null, bestS = Infinity;
     actor.forward(_v);

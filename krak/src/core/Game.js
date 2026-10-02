@@ -12,6 +12,7 @@ import { Effects } from '../combat/Effects.js';
 import { ProjectileSystem } from '../combat/ProjectileSystem.js';
 import { LootSystem } from '../gameplay/LootSystem.js';
 import { ZoneSystem } from '../gameplay/ZoneSystem.js';
+import { DropSystem } from '../gameplay/DropSystem.js';
 import { MatchManager } from '../gameplay/MatchManager.js';
 import { Progression } from '../gameplay/Progression.js';
 import { UIManager } from '../ui/UIManager.js';
@@ -95,6 +96,7 @@ export class Game {
     this.projectiles = new ProjectileSystem(this);
     this.loot = new LootSystem(this);
     this.zone = new ZoneSystem(this);
+    this.drop = new DropSystem(this);
     this.zone.wall.visible = false;
     this.match = new MatchManager(this);
     this.progression = new Progression(this.save);
@@ -375,7 +377,7 @@ export class Game {
       const p = a.ctrl.pos;
       const d2 = (p.x - c.x) ** 2 + (p.y - c.y) ** 2 + (p.z - c.z) ** 2;
       const root = a.model.root;
-      const vis = d2 < cull2 && this.match.state !== 'idle';
+      const vis = d2 < cull2 && this.match.state !== 'idle' && a.air !== 'plane';
       if (root.visible !== vis) root.visible = vis;
       const cast = d2 < sh2;
       if (a.model.castingShadow !== cast) {
@@ -387,7 +389,8 @@ export class Game {
 
   updateBodyState() {
     const m = this.match.state;
-    const key = `${m}|${this.paused}|${this.screen}`;
+    const air = this.player && this.player.alive && m === 'playing' ? this.player.air || '' : '';
+    const key = `${m}|${this.paused}|${this.screen}|${air}`;
     if (key === this.bodyState) return;
     this.bodyState = key;
     const b = document.body.classList;
@@ -395,6 +398,9 @@ export class Game {
     b.toggle('match-ended', m === 'ended');
     b.toggle('paused', this.paused);
     b.toggle('loading-match', this.screen === 'loading');
+    b.toggle('airborne', !!air);
+    b.toggle('in-plane', air === 'plane');
+    if (this.touchUI) this.touchUI.setAir(air);
     if (m !== 'playing' && this.touchUI) this.touchUI.reset();
     if (this.touchUI && b.contains('in-match')) requestAnimationFrame(() => this.touchUI.layout());
   }
@@ -437,10 +443,10 @@ export class Game {
     const A = this.actors;
     for (let i = 0; i < A.length; i++) {
       const a = A[i];
-      if (!a.alive) continue;
+      if (!a.alive || a.air) continue;
       for (let j = i + 1; j < A.length; j++) {
         const b = A[j];
-        if (!b.alive) continue;
+        if (!b.alive || b.air) continue;
         const dx = b.ctrl.pos.x - a.ctrl.pos.x, dz = b.ctrl.pos.z - a.ctrl.pos.z;
         if (Math.abs(b.ctrl.pos.y - a.ctrl.pos.y) > 1.6) continue;
         const d2 = dx * dx + dz * dz;

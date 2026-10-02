@@ -91,6 +91,7 @@ export class Minimap {
     ctx.drawImage(this.base, sx, sz, span * scale, span * scale, 0, 0, size, size);
     ctx.globalAlpha = 1;
     this.drawZones(ctx, size, span, px, pz, 1.5);
+    this.drawFlight(ctx, size, span, px, pz);
     // pings
     for (const q of this.pings) {
       ctx.fillStyle = `rgba(255,60,50,${Math.min(1, q.t)})`;
@@ -123,6 +124,32 @@ export class Minimap {
     }
   }
 
+  // Aircraft route (dashed) + plane marker while the drop is running.
+  drawFlight(ctx, size, span, cx, cz) {
+    const d = this.game.drop;
+    if (!d || !d.active || !d.plane.visible) return;
+    const a = d.pointAt(d.startD), b = d.pointAt(d.ejectD);
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([8, 6]);
+    ctx.beginPath();
+    ctx.moveTo(this.w2p(a.x, size, span, cx), this.w2p(a.z, size, span, cz));
+    ctx.lineTo(this.w2p(b.x, size, span, cx), this.w2p(b.z, size, span, cz));
+    ctx.stroke();
+    ctx.setLineDash([]);
+    const x = this.w2p(d.pos.x, size, span, cx), y = this.w2p(d.pos.z, size, span, cz);
+    ctx.translate(x, y);
+    ctx.rotate(Math.atan2(d.dir.z, d.dir.x));
+    ctx.fillStyle = '#ffffff';
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(9, 0); ctx.lineTo(-6, -2); ctx.lineTo(-6, -8); ctx.lineTo(-3, -8); ctx.lineTo(0, -2.5); ctx.lineTo(0, 2.5); ctx.lineTo(-3, 8); ctx.lineTo(-6, 8); ctx.lineTo(-6, 2); ctx.closePath();
+    ctx.fill(); ctx.stroke();
+    ctx.restore();
+  }
+
   drawPlayer(ctx, x, y, yaw, s) {
     ctx.save();
     ctx.translate(x, y);
@@ -145,6 +172,7 @@ export class Minimap {
     ctx.drawImage(this.base, 0, 0, size, size);
     const span = R * 2;
     this.drawZones(ctx, size, span, 0, 0, 2);
+    this.drawFlight(ctx, size, span, 0, 0);
     ctx.font = '800 15px "Noto Sans Armenian", sans-serif';
     ctx.textAlign = 'center';
     for (const a of AREAS) {

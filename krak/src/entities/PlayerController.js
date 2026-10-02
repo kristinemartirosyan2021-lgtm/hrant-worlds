@@ -103,7 +103,7 @@ export class Player extends Actor {
       }
     }
     if (inp.touch && g.save.data.settings.aimAssist) this.aimAssist(dt, I);
-    if (inp.hit('KeyF')) g.loot.tryPickup(this);
+    if (inp.hit('KeyF') && !this.air) g.loot.tryPickup(this);
     if (inp.hit('KeyM')) { this.mapOpen = !this.mapOpen; g.ui.toggleBigMap(this.mapOpen); }
     // grenade: hold to aim, release to throw
     if (inp.hit('KeyG') && this.inv.grenades > 0 && !this.healing) this.grenadeHeld = true;
@@ -125,7 +125,7 @@ export class Player extends Actor {
       const o = this.shotOrigin(_v);
       let best = 0.13;
       for (const a of g.actors) {
-        if (a === this || !a.alive) continue;
+        if (a === this || !a.alive || a.air === 'plane') continue;
         a.chestWorld(_h);
         const dx = _h.x - o.x, dy = _h.y - o.y, dz = _h.z - o.z;
         const d = Math.hypot(dx, dy, dz);
@@ -231,7 +231,7 @@ export class Player extends Actor {
     const ads = this.aimF;
     this.scoped = !!(def && def.scope && ads > 0.85 && this.alive);
     const crouch = this.ctrl.crouching;
-    const targetPivot = this.ctrl.pos.y + (crouch ? 1.22 : 1.62);
+    const targetPivot = this.ctrl.pos.y + (this.air === 'plane' ? 2 : this.air === 'chute' ? 2.5 : crouch ? 1.22 : 1.62);
     this.pivotY = damp(this.pivotY, targetPivot, Math.abs(targetPivot - this.pivotY) > 1.5 ? 30 : 14, dt);
     const yaw = this.yaw + this.recoilYaw;
     const pitch = this.pitch + this.recoilPitch;
@@ -239,6 +239,9 @@ export class Player extends Actor {
     _r.set(-Math.cos(yaw), 0, Math.sin(yaw));
     let dist = lerp(3.1, 1.45, ads);
     let shoulder = lerp(0.62, 0.55, ads);
+    if (this.air === 'plane') { dist = 26; shoulder = 0; }
+    else if (this.air === 'fall') { dist = 6.5; shoulder = 0; }
+    else if (this.air === 'chute') { dist = 7.5; shoulder = 0; }
     if (this.scoped) { dist = 0; shoulder = 0; }
     if (!this.alive) { dist = 4.5; shoulder = 0.3; }
     _piv.set(this.ctrl.pos.x, this.pivotY, this.ctrl.pos.z);
@@ -276,7 +279,7 @@ export class Player extends Actor {
     this.fov = damp(this.fov, fov, 12, dt);
     if (Math.abs(camera.fov - this.fov) > 0.01) { camera.fov = this.fov; camera.updateProjectionMatrix(); g.onFovChange(); }
     // hide the body when the camera is inside it / scoped
-    this.model.root.visible = !this.scoped && this.camDist > 0.55;
+    this.model.root.visible = !this.scoped && this.camDist > 0.55 && this.air !== 'plane';
     // aim point (ray from camera, skipping things between camera and player)
     const start = this.camDist + 0.4;
     const ox = _cam.x + _f.x * start, oy = _cam.y + _f.y * start, oz = _cam.z + _f.z * start;

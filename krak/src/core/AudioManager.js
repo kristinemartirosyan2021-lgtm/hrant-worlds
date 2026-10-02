@@ -480,6 +480,47 @@ export class AudioManager {
     o.connect(g).connect(this.ui); o.start(t); o.stop(t + 0.05);
   }
 
+  // ---------------------------------------------------------------- transport plane
+  startPlane(pos) {
+    if (!this.ctx || this.planeNodes) return;
+    const ctx = this.ctx;
+    const out = ctx.createGain();
+    out.gain.setValueAtTime(0.0001, ctx.currentTime);
+    out.gain.exponentialRampToValueAtTime(0.5, ctx.currentTime + 1.5);
+    const pan = new PannerNode(ctx, { panningModel: 'equalpower', distanceModel: 'inverse', refDistance: 30, rolloffFactor: 0.8, positionX: pos.x, positionY: pos.y, positionZ: pos.z });
+    out.connect(pan).connect(this.sfx);
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 700;
+    lp.connect(out);
+    const oscs = [];
+    for (const [f, gv] of [[58, 0.22], [58.7, 0.22], [116, 0.1], [174.5, 0.05]]) {
+      const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f;
+      const gg = ctx.createGain(); gg.gain.value = gv;
+      o.connect(gg).connect(lp); o.start(); oscs.push(o);
+    }
+    const n = ctx.createBufferSource(); n.buffer = this.noise; n.loop = true;
+    const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 400; bp.Q.value = 0.7;
+    const ng = ctx.createGain(); ng.gain.value = 0.35;
+    n.connect(bp).connect(ng).connect(lp); n.start(); oscs.push(n);
+    this.planeNodes = { out, pan, oscs };
+  }
+  updatePlane(pos) {
+    if (!this.planeNodes) return;
+    const p = this.planeNodes.pan, t = this.ctx.currentTime;
+    p.positionX.setTargetAtTime(pos.x, t, 0.05);
+    p.positionY.setTargetAtTime(pos.y, t, 0.05);
+    p.positionZ.setTargetAtTime(pos.z, t, 0.05);
+  }
+  stopPlane() {
+    if (!this.planeNodes) return;
+    const { out, oscs } = this.planeNodes;
+    this.planeNodes = null;
+    const t = this.ctx.currentTime;
+    out.gain.cancelScheduledValues(t);
+    out.gain.setValueAtTime(Math.max(0.0001, out.gain.value), t);
+    out.gain.exponentialRampToValueAtTime(0.0001, t + 2);
+    setTimeout(() => oscs.forEach((o) => { try { o.stop(); } catch (e) { /* ignore */ } }), 2200);
+  }
+
   // ---------------------------------------------------------------- ambience
   startWind() {
     const ctx = this.ctx;

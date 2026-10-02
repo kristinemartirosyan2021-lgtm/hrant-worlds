@@ -27,6 +27,7 @@ export class Bot extends Actor {
     this.ai.reset();
   }
   update(dt) {
+    if (this.alive && this.air) { if (this.game.match.state === 'playing') this.game.drop.botIntent(this); super.update(dt); return; }
     if (this.alive && this.game.match.state === 'playing') this.ai.update(dt);
     else { const I = this.intent; I.mx = I.mz = 0; I.fire = I.firePressed = false; }
     super.update(dt);
@@ -132,7 +133,7 @@ export class EnemyAI {
     const engage = this.engageRange();
     const cands = [];
     for (const a of this.game.actors) {
-      if (a === b || !a.alive) continue;
+      if (a === b || !a.alive || a.air === 'plane') continue;
       const dx = a.ctrl.pos.x - b.ctrl.pos.x, dz = a.ctrl.pos.z - b.ctrl.pos.z;
       const d = Math.hypot(dx, dz);
       let range = this.viewDist;

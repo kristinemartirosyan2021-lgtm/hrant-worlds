@@ -48,6 +48,7 @@ export class TouchControls {
       ${btn('tReload', 'ԼԻՑՔ', '', '<svg viewBox="0 0 24 24"><path d="M12 4a8 8 0 1 0 8 8h-3a5 5 0 1 1-5-5v3l5-4.5L12 1z" fill="currentColor"/></svg>')}
       ${btn('tNade', 'ՆՌՆԱԿ', '', '<svg viewBox="0 0 24 24"><ellipse cx="12" cy="14" rx="6" ry="7" fill="currentColor"/><rect x="10" y="3" width="4" height="4" fill="currentColor"/><path d="M14 5h5" stroke="currentColor" stroke-width="2"/></svg>')}
       ${btn('tHeal', 'ԲՈՒԺՎԵԼ', 'heal', '<svg viewBox="0 0 24 24"><path d="M9 3h6v6h6v6h-6v6H9v-6H3V9h6z" fill="currentColor"/></svg>')}
+      <div class="tdrop" id="tDrop" data-role="tDrop"><span id="tDropLabel">ԻՋՆԵԼ</span></div>
       <div class="tbtn pause" id="tPause" data-role="tPause"><span class="ti"><svg viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" fill="currentColor"/><rect x="14" y="5" width="4" height="14" fill="currentColor"/></svg></span></div>
     `;
     this.el = {};
@@ -162,6 +163,7 @@ export class TouchControls {
       case 'tNade': I.vDown('KeyG'); break;
       case 'tHeal': I.vDown('KeyH'); break;
       case 'tPause': this.game.pause(); break;
+      case 'tDrop': this.tap('Space'); break;
       default: {
         // Zones: left part → joystick, rest → look.
         if (e.clientX < W * 0.42 && this.joy.id === null) {
@@ -240,6 +242,14 @@ export class TouchControls {
       case 'tNade': I.vUp('KeyG'); break;
       case 'tHeal': I.vUp('KeyH'); break;
     }
+  }
+
+  // Aircraft / parachute phase: one big contextual action button.
+  setAir(air) {
+    const b = this.el.tDrop;
+    if (!b) return;
+    b.classList.toggle('show', !!air && air !== 'chute');
+    this.el.tDropLabel.textContent = air === 'plane' ? 'ԻՋՆԵԼ' : 'ԲԱՑԵԼ ՕԴԱՊԱՐԻԿԸ';
   }
 
   // Release everything (pause, death, match end).

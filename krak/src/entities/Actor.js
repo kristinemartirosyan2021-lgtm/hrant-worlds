@@ -46,6 +46,8 @@ export class Actor {
     this.lastHitTime = -99;
     this.spawnTime = 0;
     this.placement = 0;
+    this.air = null;          // 'plane' | 'fall' | 'chute' | null (on the ground)
+    this.chute = null;
     this.model.stepCb = () => this.footstep();
   }
 
@@ -70,6 +72,9 @@ export class Actor {
     this.model.setWeapon('pistol', 0);
     this.spawnTime = this.game.time;
     this.placement = 0;
+    this.air = null;
+    if (this.chute) this.chute.visible = false;
+    this.model.root.rotation.x = 0;
   }
 
   equipCurrentModel() {
@@ -94,6 +99,7 @@ export class Actor {
     const m = this.model;
     if (!this.alive) { m.update(dt, null); return; }
     const I = this.intent;
+    if (this.air) { this.updateAir(dt); return; }
     this.ctrl.facing = this.yaw;
     const wasGround = this.ctrl.onGround;
     this.ctrl.step(dt, I.mx, I.mz, this.moveSpeed(), I.jump, I.crouch);
@@ -121,6 +127,22 @@ export class Actor {
       crouch: this.ctrl.crouching, onGround: this.ctrl.onGround,
       aimPitch: this.pitch, aiming: I.aiming || this.weapons.sinceShot < 0.4, sprint: I.sprint,
       reloadT: this.weapons.reloadT, switchT: this.weapons.switchT, healT: this.healing ? this.healT : 0,
+    });
+  }
+
+  // Aircraft / free-fall / parachute (see DropSystem).
+  updateAir(dt) {
+    const drop = this.game.drop;
+    drop.updateActor(this, dt);
+    const m = this.model;
+    if (!this.air) return;                // just landed
+    m.root.position.copy(this.ctrl.pos);
+    m.root.rotation.y = this.yaw;
+    m.root.rotation.x = this.air === 'fall' ? 1.05 : 0;   // belly-down while free-falling
+    m.update(dt, {
+      speed: 0, localVX: 0, localVZ: 0, crouch: false, onGround: false,
+      aimPitch: this.air === 'fall' ? -0.6 : 0, aiming: false, sprint: false,
+      reloadT: -1, switchT: 0, healT: 0,
     });
   }
 
@@ -225,6 +247,15 @@ export class Actor {
 
   die(info) {
     this.alive = false;
+    if (this.air) {
+      // Killed in the air: the body drops to the ground below.
+      const p = this.ctrl.pos;
+      p.y = this.game.world.collision.groundAt(p.x, p.z, 0.3, p.y, 0);
+      this.air = null;
+      if (this.chute) this.chute.visible = false;
+      this.model.root.rotation.x = 0;
+      this.model.root.position.copy(p);
+    }
     this.cancelHeal();
     const attacker = info.attacker || (this.game.time - this.lastHitTime < 8 ? this.lastHitBy : null);
     const dir = info.dir || _v.set(0, 0, 1);

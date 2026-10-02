@@ -56,7 +56,7 @@ export class ProjectileSystem {
     let bestT = wh ? wh.t : maxD;
     let victim = null, head = false;
     for (const a of g.actors) {
-      if (a === shooter || !a.alive) continue;
+      if (a === shooter || !a.alive || a.air === 'plane') continue;
       const dx = a.ctrl.pos.x - origin.x, dz = a.ctrl.pos.z - origin.z;
       const along = dx * dir.x + dz * dir.z;
       if (along < -1 || along > bestT + 1) continue;

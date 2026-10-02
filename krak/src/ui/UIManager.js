@@ -540,6 +540,22 @@ export class UIManager {
     this.sty('vigZone', 'opacity', outside ? 1 : 0);
     $('zoneWarn').classList.toggle('show', outside);
     $('clickToLock').classList.toggle('show', g.match.state === 'playing' && !g.input.locked && !g.paused);
+    // Aircraft / parachute hint.
+    if (p.air && p.alive) {
+      const drop = g.drop;
+      const key = g.touch ? '' : 'SPACE · ';
+      const alt = Math.max(0, Math.round(p.ctrl.pos.y - g.world.collision.groundAt(p.ctrl.pos.x, p.ctrl.pos.z, 0.3, p.ctrl.pos.y, 0)));
+      if (p.air === 'plane') {
+        this.txt('dropTitle', drop.overMap ? `${key}ԻՋՆԵԼ` : 'ԻՆՔՆԱԹԻՌԸ ՄՈՏԵՆՈՒՄ Է');
+        this.txt('dropSub', `Ընտրիր վայրը քարտեզի վրա և ցատկիր · ավտոմատ իջնում՝ ${fmtTime(drop.timeToEject)}`);
+      } else if (p.air === 'fall') {
+        this.txt('dropTitle', `${key}ԲԱՑԵԼ ՕԴԱՊԱՐԻԿԸ`);
+        this.txt('dropSub', `Բարձրություն՝ ${alt}մ · ուղղորդիր դեպի տները`);
+      } else {
+        this.txt('dropTitle', 'ՕԴԱՊԱՐԻԿ');
+        this.txt('dropSub', `Բարձրություն՝ ${alt}մ`);
+      }
+    }
     // Minimap at ~30 Hz on phones.
     this.mmAcc = (this.mmAcc || 0) + dt;
     this.mmFrame = (this.mmFrame || 0) + 1;

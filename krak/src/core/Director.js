@@ -140,17 +140,16 @@ export class Director {
       return;
     }
     if (this.mode === 'deploy') {
-      const p = this.player.ctrl.pos;
-      const k = smoothstep(0, 3.4, this.t);
-      const e = 1 - Math.pow(1 - k, 3);
-      const behind = _t.set(p.x - Math.sin(this.player.yaw) * 3.1 - Math.cos(this.player.yaw) * 0.6, p.y + 1.75, p.z - Math.cos(this.player.yaw) * 3.1 + Math.sin(this.player.yaw) * 0.6);
-      camera.position.lerpVectors(this.from, behind, e);
-      _v.set(p.x + Math.sin(this.player.yaw) * 10 * e, p.y + lerp(0, 1.6, e), p.z + Math.cos(this.player.yaw) * 10 * e);
-      camera.lookAt(_v);
-      const fov = lerp(60, 72, e);
-      if (Math.abs(camera.fov - fov) > 0.01) { camera.fov = fov; camera.updateProjectionMatrix(); g.onFovChange(); }
-      this.player.model.root.position.copy(p);
-      this.player.model.root.rotation.y = this.player.yaw;
+      // Opening shot: sweep around the transport plane waiting at the map edge.
+      const drop = g.drop;
+      const p = drop.pos;
+      const k = smoothstep(0, 3.6, this.t);
+      const heading = Math.atan2(drop.dir.x, drop.dir.z);
+      const ang = heading + Math.PI * 0.35 + k * Math.PI * 0.6;
+      const dist = lerp(60, 30, k);
+      camera.position.set(p.x + Math.sin(ang) * dist, p.y + lerp(14, 7, k), p.z + Math.cos(ang) * dist);
+      camera.lookAt(p.x, p.y, p.z);
+      if (Math.abs(camera.fov - 60) > 0.01) { camera.fov = 60; camera.updateProjectionMatrix(); g.onFovChange(); }
       return;
     }
     if (this.mode === 'victory' || this.mode === 'defeat') {
