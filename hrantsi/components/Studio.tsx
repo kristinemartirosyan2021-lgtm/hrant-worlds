@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { creditsChanged } from "@/lib/account";
 import { enhancePrompt, fileToDataUrl, runGeneration, saveToGallery, type GalleryItem } from "@/lib/client";
 import type { Task } from "@/lib/replicate";
 
@@ -51,7 +52,14 @@ const RATIOS = ["1:1", "16:9", "9:16", "4:3", "3:4", "3:2", "2:3"];
 
 type Result = { id: string; status: "loading" | "done" | "error"; url?: string; error?: string; kind: "image" | "video"; prompt: string };
 
-export default function Studio({ mode }: { mode: StudioMode }) {
+type Props = {
+  mode: StudioMode;
+  costs: Record<Task, number>;
+  credits: number;
+  onNeedCredits: () => void;
+};
+
+export default function Studio({ mode, costs, credits, onNeedCredits }: Props) {
   const copy = COPY[mode];
   const [prompt, setPrompt] = useState("");
   const [image, setImage] = useState<string | null>(null);
@@ -72,7 +80,6 @@ export default function Studio({ mode }: { mode: StudioMode }) {
 
   async function generate() {
     if (busy) return;
-    const task: Task = mode === "tools" ? tool : mode;
     const kind = mode === "video" ? "video" : "image";
     const id = crypto.randomUUID();
     const shownPrompt = mode === "tools" ? (tool === "upscale" ? "Որակի բարձրացում" : "Ֆոնի հեռացում") : prompt;
@@ -97,10 +104,14 @@ export default function Studio({ mode }: { mode: StudioMode }) {
       setResults((r) => r.map((x) => (x.id === id ? { ...x, status: "error", error } : x)));
     } finally {
       setStatusText("");
+      creditsChanged();
     }
   }
 
-  const canSubmit = !busy && (needsImage ? Boolean(image) : true) && (mode === "tools" || prompt.trim().length > 0);
+  const task: Task = mode === "tools" ? tool : mode;
+  const cost = costs[task];
+  const enough = credits >= cost;
+  const canSubmit = enough && !busy && (needsImage ? Boolean(image) : true) && (mode === "tools" || prompt.trim().length > 0);
 
   return (
     <div className="studio">
@@ -177,7 +188,13 @@ export default function Studio({ mode }: { mode: StudioMode }) {
 
           <button className="primary" disabled={!canSubmit} onClick={() => void generate()}>
             {busy ? "Սպասիր…" : mode === "video" ? "🎬 Ստեղծել վիդեո" : mode === "tools" ? "⚡ Կատարել" : "🎨 Ստեղծել"}
+            <span className="cost"> · 💎 {cost}</span>
           </button>
+          {!enough && (
+            <button className="link-btn warn" onClick={onNeedCredits}>
+              Բավարար կրեդիտ չկա ({credits}/{cost})։ Լիցքավորել →
+            </button>
+          )}
           {statusText && <p className="status">{statusText}</p>}
         </section>
 

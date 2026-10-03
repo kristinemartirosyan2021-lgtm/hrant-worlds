@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
+import { currentUser } from "@/lib/billing";
 import { claude, ENHANCE_SYSTEM, FALLBACK_BETA, hasClaudeKey, MODEL } from "@/lib/claude";
 
 export const runtime = "nodejs";
@@ -8,6 +9,9 @@ export const maxDuration = 60;
 type Body = { prompt?: string; kind?: "image" | "edit" | "video" };
 
 export async function POST(req: Request) {
+  if (!(await currentUser().catch(() => null))) {
+    return NextResponse.json({ error: "Մուտք գործիր։" }, { status: 401 });
+  }
   const { prompt, kind = "image" } = (await req.json()) as Body;
   if (!prompt?.trim()) {
     return NextResponse.json({ error: "Պրոմպտը դատարկ է։" }, { status: 400 });

@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { CHAT_DAILY_LIMIT, currentUser, countChatMessage } from "@/lib/billing";
 import { CHAT_SYSTEM, claude, FALLBACK_BETA, hasClaudeKey, MODEL } from "@/lib/claude";
 
 export const runtime = "nodejs";
@@ -35,6 +36,14 @@ export async function POST(req: Request) {
       "⚠️ ANTHROPIC_API_KEY-ը կարգավորված չէ։ Ավելացրու այն .env.local ֆայլում (տես README), և զրույցը կաշխատի։",
       { headers: { "Content-Type": "text/plain; charset=utf-8" } },
     );
+  }
+
+  const text = (msg: string, status = 200) =>
+    new Response(msg, { status, headers: { "Content-Type": "text/plain; charset=utf-8" } });
+  const user = await currentUser().catch(() => null);
+  if (!user) return text("⚠️ Մուտք գործիր՝ զրուցելու համար։", 401);
+  if (!(await countChatMessage(user.email))) {
+    return text(`⚠️ Այսօրվա անվճար սահմանաչափը (${CHAT_DAILY_LIMIT} հաղորդագրություն) լրացել է։ Վաղը նորից կարող ես գրել։`);
   }
 
   const { messages } = (await req.json()) as { messages: ChatMessage[] };
