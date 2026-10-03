@@ -41,6 +41,10 @@
 Հիմնական խաղային կոդը՝ `app/game.tsx`  
 Դիզայնը՝ `app/globals.css`
 
+## ✨ HrantSi
+
+Այս ռեպոյում կա նաև **HrantSi**-ը՝ AI հարթակ զրույցի, ռեալիստիկ նկարների, լուսանկարների խմբագրման և վիդեոների գեներացիայի համար։ Մանրամասները՝ [`hrantsi/README.md`](hrantsi/README.md)։
+
 ## ✍️ Հեղինակ
 
 **Hrant Worlds**-ը ստեղծել է **Kristine Martirosyan**-ը ([@kristinemartirosyan2021-lgtm](https://github.com/kristinemartirosyan2021-lgtm))։
