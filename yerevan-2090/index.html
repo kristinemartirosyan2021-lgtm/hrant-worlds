@@ -777,8 +777,8 @@ function roundRect(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcT
 // ================= content definitions =================
 const WAVES = [
   { name: 'Առաջին ճեղքը', intro: 'Պորտալից դուրս են գալիս արագ հետապնդողներ', crystals: 3, mix: { chaser: 1 }, every: 1.5, max: 10 },
-  { name: 'Կրակի գիծ', intro: 'Նոր վտանգ․ հեռվից կրակող աշտարակներ', crystals: 4, mix: { chaser: 0.62, shooter: 0.38 }, every: 1.3, max: 14 },
-  { name: 'Պողպատե պատ', intro: 'Ծանր զրահակիրներ․ խուսափիր նրանց հարվածից', crystals: 5, mix: { chaser: 0.55, shooter: 0.27, tank: 0.18 }, every: 1.15, max: 17 },
+  { name: 'Կրակի գիծ', intro: 'Նոր վտանգ․ հեռվից կրակող աշտարակներ', crystals: 5, mix: { chaser: 0.62, shooter: 0.38 }, every: 1.3, max: 13 },
+  { name: 'Պողպատե պատ', intro: 'Ծանր զրահակիրներ․ խուսափիր նրանց հարվածից', crystals: 5, mix: { chaser: 0.57, shooter: 0.27, tank: 0.16 }, every: 1.25, max: 15 },
   { name: 'Ժամանակի փոթորիկ', intro: 'Ճեղքերը բացվում են քո շուրջը, իսկ աշտարակները կրակում են եռակի', crystals: 5, mix: { chaser: 0.55, shooter: 0.28, tank: 0.17 }, every: 1.0, max: 21, elite: true, rifts: true },
   { name: 'Երկվորյակ պորտալներ', intro: 'Երկու պորտալ միաժամանակ․ փակիր երկուսն էլ', crystals: 6, portals: 2, mix: { chaser: 0.5, shooter: 0.3, tank: 0.2 }, every: 0.95, max: 24, elite: true, rifts: true },
   { name: 'Քրոնոս-Պահակ', intro: 'Գլխավոր թշնամին դուրս է գալիս ժամանակի սրտից', boss: true, mix: { chaser: 1 } },
@@ -834,7 +834,7 @@ function makePlayer() {
     hp: 100, maxHp: 100, speed: 255, fireCd: 0.3, fireRate: 0.42, dmg: 12, multishot: 1, pierce: 0, chain: 0,
     shieldMax: 0, shield: 0, shieldT: 7, dashCd: 0, dashCdMax: 1.1, dashT: 0, dvx: 0, dvy: 0, dashDmg: 0, dashHit: null,
     invuln: 0, slowCd: 0, slowCdMax: 15, slowDur: 3, drones: 0, droneA: 0, magnet: 95, regen: 0,
-    level: 1, xp: 0, xpNext: 6, ups: {}, hurtT: 0, ghostHp: 100, skin: skinById(save.skin) };
+    level: 1, xp: 0, xpNext: 5, ups: {}, hurtT: 0, ghostHp: 100, skin: skinById(save.skin) };
 }
 function newGame() {
   G = { time: 0, wave: -1, wd: null, phase: 'intro', phaseT: 0, score: 0, kills: 0, crystalsTotal: 0, crystalsWave: 0, portalsClosed: 0,
@@ -994,7 +994,7 @@ function killEnemy(e, silent) {
 }
 function gainXp(n) {
   P.xp += n;
-  while (P.xp >= P.xpNext) { P.xp -= P.xpNext; P.level++; P.xpNext = Math.round(P.xpNext * 1.24 + 3); G.pendingLv++; }
+  while (P.xp >= P.xpNext) { P.xp -= P.xpNext; P.level++; P.xpNext = Math.round(P.xpNext * 1.22 + 3); G.pendingLv++; }
 }
 
 // ================= boss =================
