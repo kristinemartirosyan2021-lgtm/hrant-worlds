@@ -41,6 +41,10 @@
 Հիմնական խաղային կոդը՝ `app/game.tsx`  
 Դիզայնը՝ `app/globals.css`
 
+## ⏳ Նոր խաղ՝ Երևան 2090․ Ժամանակի պահապանը
+
+Վերևից դիտվող 2D գործողությունների խաղ ֆուտուրիստական Երևանում՝ պորտալներով, երեք տեսակի թշնամիներով, ուժեղացումներով և գլխավոր թշնամով։ Խաղը մեկ ֆայլ է՝ [`yerevan-2090/index.html`](yerevan-2090/index.html)։ Մանրամասները՝ [`yerevan-2090/README.md`](yerevan-2090/README.md)։
+
 ## ✍️ Հեղինակ
 
 **Hrant Worlds**-ը ստեղծել է **Kristine Martirosyan**-ը ([@kristinemartirosyan2021-lgtm](https://github.com/kristinemartirosyan2021-lgtm))։
