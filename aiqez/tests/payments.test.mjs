@@ -3,7 +3,7 @@
 //
 // Ֆունկցիաները աշխատում են տեղական սերվերում, պահոցը՝ հիշողության մեջ,
 // բանկը՝ փորձնական (PAYMENT_PROVIDER=test) կամ ArCa-ի կեղծ սերվեր։
-// Թեստային գինը (10 000) դրվում է միայն այս թեստի ներսում, config.js-ը չի փոխվում։
+// Գները՝ իրական config.js-ից (երգ, 1 րոպե՝ 15 000 ֏)։
 import { createRequire } from "node:module";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import http from "node:http";
@@ -18,8 +18,8 @@ const require = createRequire(import.meta.url);
 const { chromium, devices } = require("playwright");
 const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const config = require(path.join(dir, "config.js"));
-const TEST_PRICE = 10000;
-config.services.find((s) => s.id === "song").price = TEST_PRICE; // միայն թեստի հիշողության մեջ
+const TEST_PRICE = 15000; // «Անհատական AI երգ» → «1 րոպե»
+assert.equal(config.services.find((s) => s.id === "song").packages.find((p) => p.id === "song-1m").price, TEST_PRICE);
 
 const fnDir = path.join(dir, "netlify", "functions");
 const handlers = {};
@@ -79,24 +79,44 @@ await step("payment-config. փորձնական ռեժիմ, միացված", asyn
   assert.deepEqual(data, { enabled: true, test: true, currency: "AMD" });
 });
 
-await step("Առանց հաստատված գնի ծառայության վճարումը մերժվում է", async () => {
-  const { status, data } = await post("create-payment", { serviceId: "video", name: "Անի", contact: "@ani_test", language: "hy" });
+await step("«Արժեքը ճշտել» փաթեթի համար քարտային վճարումը մերժվում է", async () => {
+  const { status, data } = await post("create-payment", { serviceId: "video", packageId: "video-custom", name: "Անի", contact: "@ani_test", language: "hy" });
   assert.equal(status, 409);
   assert.equal(data.error, "no_fixed_price");
-  assert.match(data.message, /գինը դեռ հաստատված չէ/);
+  assert.match(data.message, /ճշտվում է անհատապես/);
+  const noPkg = await post("create-payment", { serviceId: "video", name: "Անի", contact: "@ani_test" });
+  assert.equal(noPkg.status, 400);
+  assert.equal(noPkg.data.error, "unknown_package");
+});
+
+await step("Սերվերի գինը. ակցիան ավարտվում է նոյեմբերի 30-ին 23:59:59 Երևանի ժամով", async () => {
+  assert.equal(payments.priceFor("santa", "santa-30s", new Date("2026-11-30T23:59:59+04:00")).amount, 10000);
+  assert.equal(payments.priceFor("santa", "santa-30s", new Date("2026-12-01T00:00:00+04:00")).error, "price_expired");
+  assert.equal(payments.priceFor("santa", "santa-30s", new Date("2026-11-30T20:00:01Z")).error, "price_expired");
+  assert.equal(payments.priceFor("video", "video-3m").amount, 35000);
+  assert.equal(payments.priceFor("portrait", "portrait-1").amount, 5000);
+  assert.equal(payments.priceFor("portrait", "portrait-set").error, "no_fixed_price");
+  assert.equal(payments.priceFor("song", "video-1m").error, "unknown_package");
+});
+
+await step("Էջի գինը սերվերի գնից տարբերվելու դեպքում վճարումը չի սկսվում", async () => {
+  const { status, data } = await post("create-payment", { serviceId: "song", packageId: "song-2m", expectedAmount: 15000, name: "Անի", contact: "@ani_test" });
+  assert.equal(status, 409);
+  assert.equal(data.error, "price_changed");
 });
 
 await step("Հաճախորդի ուղարկած գումարը անտեսվում է, գինը՝ config.js-ից", async () => {
-  const { status, data } = await post("create-payment", { serviceId: "song", amount: 1, price: 1, name: "Անի", contact: "@ani_test", language: "hy" });
+  const { status, data } = await post("create-payment", { serviceId: "song", packageId: "song-1m", amount: 1, price: 1, name: "Անի", contact: "@ani_test", language: "hy" });
   assert.equal(status, 200);
   assert.equal(data.amount, TEST_PRICE);
-  assert.equal(data.priceLabel, "10 000 ֏");
+  assert.equal(data.priceLabel, "15 000 ֏");
+  assert.equal(data.service, "Անհատական AI երգ · 1 րոպե");
   assert.match(data.paymentUrl, /\/payment\/test-bank\.html\?pid=TEST-/);
   assert.equal((await record(data.order)).status, "pending");
 });
 
 await step("Վերադարձի URL-ի կեղծումը չի դարձնում պատվերը վճարված", async () => {
-  const { data } = await post("create-payment", { serviceId: "song", name: "Անի", contact: "@ani_test" });
+  const { data } = await post("create-payment", { serviceId: "song", packageId: "song-1m", name: "Անի", contact: "@ani_test" });
   const r1 = await api(`payment-return?order=${data.order}&status=paid&orderStatus=2`);
   assert.match(r1.location, /success\.html/); // success էջը ինքը ցույց կտա «ստուգում ենք»
   assert.equal((await record(data.order)).status, "pending");
@@ -109,7 +129,7 @@ await step("Վերադարձի URL-ի կեղծումը չի դարձնում պ�
 });
 
 await step("Բանկի հաստատած գումարը չհամընկնելու դեպքում պատվերը վճարված չի նշվում", async () => {
-  const { data } = await post("create-payment", { serviceId: "song", name: "Անի", contact: "@ani_test" });
+  const { data } = await post("create-payment", { serviceId: "song", packageId: "song-1m", name: "Անի", contact: "@ani_test" });
   const rec = await record(data.order);
   const tb = storeMod.store(storeMod.TEST_BANK);
   const bank = await tb.get(rec.providerPaymentId, { type: "json" });
@@ -135,11 +155,6 @@ async function openSite() {
   const page = await ctx.newPage();
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
-  // Թեստային գին նաև բրաուզերի config.js-ում (առաջին price: null-ը «song»-ինն է)
-  await page.route("**/config.js", async (route) => {
-    const res = await route.fetch();
-    await route.fulfill({ response: res, body: (await res.text()).replace("price: null,", `price: ${TEST_PRICE},`) });
-  });
   await page.goto(base + "/");
   await page.waitForFunction(() => document.readyState === "complete");
   return { ctx, page, errors };
@@ -152,6 +167,7 @@ function futureISO(days) {
 
 async function orderToBank(page, name) {
   await page.locator('.card [data-service="song"]').click();
+  await page.locator('label[for="pkg-song-1m"]').click();
   await page.fill("#f-name", name);
   await page.fill("#f-contact", "+374 99 123456");
   await page.locator('label[for="lang-hy"]').click();
@@ -165,9 +181,10 @@ async function orderToBank(page, name) {
   await page.waitForSelector("#pay-details dd");
 }
 
-await step("Ծառայություն առանց գնի. քարտով վճարման կոճակ չկա", async () => {
+await step("«Արժեքը ճշտել» փաթեթ. քարտով վճարման կոճակ չկա", async () => {
   const { ctx, page } = await openSite();
   await page.locator('.card [data-service="video"]').click();
+  await page.locator('label[for="pkg-video-custom"]').click();
   await page.fill("#f-name", "Անի");
   await page.fill("#f-contact", "@ani_test");
   await page.locator('label[for="lang-hy"]').click();
@@ -176,7 +193,7 @@ await step("Ծառայություն առանց գնի. քարտով վճարմ�
   await page.locator('#order-form button[type="submit"]').click();
   await page.waitForSelector("#summary:not([hidden])");
   assert.equal(await page.locator("#confirm-pay").isHidden(), true);
-  assert.equal(await page.locator("#confirm-send").innerText(), "Ուղարկել պատվերը");
+  assert.equal(await page.locator("#confirm-send").innerText(), "Ուղարկել հայտը");
   await ctx.close();
 });
 
@@ -186,6 +203,7 @@ await step("Հաջող վճարում. պատվեր → գին → բանկ → 
   const { ctx, page, errors } = await openSite();
   const before = formPosts.length;
   await page.locator('.card [data-service="song"]').click();
+  await page.locator('label[for="pkg-song-1m"]').click();
   await page.fill("#f-name", "Անի");
   await page.fill("#f-contact", "+374 99 123456");
   await page.locator('label[for="lang-hy"]').click();
@@ -193,7 +211,7 @@ await step("Հաջող վճարում. պատվեր → գին → բանկ → 
   await page.fill("#f-details", "Ծննդյան երգ մայրիկի համար, փոփ ոճով։");
   await page.locator('#order-form button[type="submit"]').click();
   await page.waitForSelector("#confirm-pay:not([hidden])");
-  assert.match(await page.locator(".pay-amount").innerText(), /10 000 ֏/);
+  assert.match(await page.locator(".pay-amount").innerText(), /15 000 ֏/);
   assert.match(await page.locator(".pay-box").innerText(), /փորձնական ռեժիմում/);
   if (shotDir) await page.screenshot({ path: path.join(shotDir, "p1-summary.png") });
   await page.click("#confirm-pay");
@@ -206,7 +224,7 @@ await step("Հաջող վճարում. պատվեր → գին → բանկ → 
   const orderPost = formPosts.slice(before).find((p) => p.body.includes('name="form-name"\r\n\r\norder'));
   assert.ok(orderPost, "order form posted");
   const orderNumber = orderPost.body.match(/name="order_number"\r\n\r\n(AQ-[^\r]+)/)[1];
-  assert.match(orderPost.body, /name="payment"\r\n\r\nՔարտով՝ 10 000 ֏ — սպասում է բանկի հաստատմանը \(ՓՈՐՁՆԱԿԱՆ\)/);
+  assert.match(orderPost.body, /name="payment"\r\n\r\nՔարտով՝ 15 000 ֏ — սպասում է բանկի հաստատմանը \(ՓՈՐՁՆԱԿԱՆ\)/);
   assert.equal((await record(orderNumber)).status, "pending");
 
   await page.click('[data-outcome="paid"]');
@@ -291,7 +309,7 @@ await step("ArCa. առանց միացման տվյալների վճարումն 
   process.env.PAYMENT_PROVIDER = "arca";
   delete process.env.ARCA_USERNAME; delete process.env.ARCA_PASSWORD;
   assert.deepEqual((await api("payment-config")).data, { enabled: false, test: false, currency: "AMD" });
-  assert.equal((await post("create-payment", { serviceId: "song", name: "Անի", contact: "@ani_test" })).status, 503);
+  assert.equal((await post("create-payment", { serviceId: "song", packageId: "song-1m", name: "Անի", contact: "@ani_test" })).status, 503);
   assert.equal((await api("test-bank?pid=x")).status, 404);
 });
 
@@ -302,7 +320,7 @@ await step("ArCa. register.do և getOrderStatusExtended.do", async () => {
   assert.deepEqual((await api("payment-config")).data, { enabled: true, test: false, currency: "AMD" });
 
   arcaNext["register.do"] = { orderId: "bank-123", formUrl: "https://ipay.example/payment/merchants/pay.html?mdOrder=bank-123" };
-  const { data } = await post("create-payment", { serviceId: "song", name: "Անի", contact: "@ani_test", language: "ru" });
+  const { data } = await post("create-payment", { serviceId: "song", packageId: "song-1m", name: "Անի", contact: "@ani_test", language: "ru" });
   assert.equal(data.paymentUrl, "https://ipay.example/payment/merchants/pay.html?mdOrder=bank-123");
   const reg = arcaCalls.find((c) => c.method === "register.do").params;
   assert.equal(reg.amount, String(TEST_PRICE * 100));
@@ -326,7 +344,7 @@ await step("ArCa. register.do և getOrderStatusExtended.do", async () => {
   assert.equal(st.orderId, "bank-123");
 
   arcaNext["register.do"] = { errorCode: "5", errorMessage: "Access denied" };
-  const bad = await post("create-payment", { serviceId: "song", name: "Անի", contact: "@ani_test" });
+  const bad = await post("create-payment", { serviceId: "song", packageId: "song-1m", name: "Անի", contact: "@ani_test" });
   assert.equal(bad.status, 502);
   assert.match(bad.data.message, /Բանկի վճարման էջը այս պահին հասանելի չէ/);
   assert.equal(arca.isConfigured(), true);

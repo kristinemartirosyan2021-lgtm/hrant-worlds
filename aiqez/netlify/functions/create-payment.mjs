@@ -1,4 +1,4 @@
-// POST { serviceId, language, name, contact }       → նոր պատվեր և վճարման էջի հղում
+// POST { serviceId, packageId, expectedAmount, language, name, contact } → նոր պատվեր և վճարման էջի հղում
 // POST { retryOrder: "AQ-…" }                        → նոր փորձ նույն (չվճարված) պատվերի համար
 // Գումարը որոշում է սերվերը config.js-ից. հաճախորդից գումար չի ընդունվում։
 import {
@@ -27,7 +27,7 @@ export default async (req) => {
     if (!rec) return json({ error: "not_found", message: "Պատվերը չի գտնվել։" }, 404);
     if (rec.status === "paid") return json({ error: "already_paid", message: "Այս պատվերն արդեն վճարված է։", ...publicView(rec) }, 409);
     // Գինը նորից ստուգվում է config.js-ով
-    const price = priceFor(rec.serviceId);
+    const price = priceFor(rec.serviceId, rec.packageId);
     if (price.error || price.amount !== rec.amount) {
       return json({ error: "price_changed", message: "Ծառայության գինը փոխվել է։ Խնդրում ենք կապվել մեզ հետ։" }, 409);
     }
@@ -35,10 +35,18 @@ export default async (req) => {
     rec.provider = provider.name;
     rec.test = provider.isTest;
   } else {
-    const price = priceFor(clean(input.serviceId, 40));
+    const price = priceFor(clean(input.serviceId, 40), clean(input.packageId, 40));
     if (price.error === "unknown_service") return json({ error: "unknown_service", message: "Ծառայությունը չի գտնվել։" }, 400);
+    if (price.error === "unknown_package") return json({ error: "unknown_package", message: "Ընտրիր փաթեթը։" }, 400);
+    if (price.error === "price_expired") {
+      return json({ error: "price_expired", message: "Այս փաթեթի ակցիոն գինն այլևս չի գործում, ուստի քարտով վճարումը հասանելի չէ։ Ուղարկիր հայտը, և մենք կճշտենք արժեքը։" }, 409);
+    }
     if (price.error) {
-      return json({ error: "no_fixed_price", message: "Այս ծառայության գինը դեռ հաստատված չէ, ուստի քարտով վճարումը հասանելի չէ։ Ուղարկիր պատվերը, և մենք կհաստատենք արժեքը։" }, 409);
+      return json({ error: "no_fixed_price", message: "Այս փաթեթի արժեքը ճշտվում է անհատապես, ուստի քարտով վճարումը հասանելի չէ։ Ուղարկիր հայտը, և մենք կկապվենք քեզ հետ։" }, 409);
+    }
+    // Եթե էջում ցույց տրված գինը տարբերվում է սերվերի գնից (օր.՝ ակցիան հենց նոր ավարտվեց)
+    if (input.expectedAmount != null && Number(input.expectedAmount) !== price.amount) {
+      return json({ error: "price_changed", message: "Գինը թարմացվել է։ Թարմացրու էջը և ստուգիր նոր գինը։" }, 409);
     }
     const name = clean(input.name, 80);
     const contact = clean(input.contact, 40);
@@ -47,6 +55,8 @@ export default async (req) => {
       orderNumber: makeOrderNumber(),
       serviceId: price.service.id,
       serviceTitle: price.service.title,
+      packageId: price.pkg.id,
+      packageTitle: price.pkg.title,
       amount: price.amount,
       currency: "AMD",
       name,
@@ -65,7 +75,7 @@ export default async (req) => {
     const reg = await provider.register({
       bankOrderNumber: rec.attempt > 1 ? `${rec.orderNumber}-${rec.attempt}` : rec.orderNumber,
       amount: rec.amount,
-      description: `AIQEZ ${rec.orderNumber}: ${rec.serviceTitle}`,
+      description: `AIQEZ ${rec.orderNumber}: ${rec.serviceTitle}, ${rec.packageTitle || ""}`,
       returnUrl: back,
       failUrl: back + "&r=fail",
       siteUrl: site,

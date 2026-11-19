@@ -14,7 +14,7 @@
   var MONTHS = ["հունվարի", "փետրվարի", "մարտի", "ապրիլի", "մայիսի", "հունիսի",
     "հուլիսի", "օգոստոսի", "սեպտեմբերի", "հոկտեմբերի", "նոյեմբերի", "դեկտեմբերի"];
 
-  var state = { language: "", photos: [], payments: { enabled: false, test: false } }; // photos: [{ file, url }]
+  var state = { language: "", packageId: "", photos: [], payments: { enabled: false, test: false } }; // photos: [{ file, url }]
 
   /* ---------- Օգնական ֆունկցիաներ ---------- */
 
@@ -29,12 +29,22 @@
     return node;
   }
 
+  var P = window.AIQEZ_PRICING;
+
   function priceText(service) {
-    if (service.price === null || service.price === undefined || service.price === "") {
-      return "Արժեքը՝ ըստ պատվերի";
-    }
-    var n = String(service.price).replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-    return (service.priceFrom ? "սկսած " : "") + n + " " + cfg.currency;
+    return P.serviceFromLabel(service, new Date(), cfg.currency);
+  }
+
+  function pkgPriceText(pkg) {
+    return P.priceLabel(pkg, new Date(), cfg.currency);
+  }
+
+  function promoActive(pkg) {
+    return Boolean(pkg.promoNote && P.activePrice(pkg, new Date()) !== null);
+  }
+
+  function findPkg(service, id) {
+    return P.findPackage(service, id);
   }
 
   function findService(id) {
@@ -77,6 +87,12 @@
         icon,
         el("h3", { text: s.title }),
         el("p", { text: s.description }),
+        el("ul", { class: "pkg-list" }, (s.packages || []).map(function (p) {
+          return el("li", {}, [
+            el("span", { text: p.title + (promoActive(p) ? " · " + p.promoNote : "") }),
+            el("b", { text: pkgPriceText(p) })
+          ]);
+        })),
         el("div", { class: "card-foot" }, [
           el("span", { class: "price", text: priceText(s) }),
           btn
@@ -110,7 +126,7 @@
 
   function updateServiceInfo() {
     var s = findService($("f-service").value);
-    $("service-price").textContent = s ? priceText(s) : "";
+    renderPackages(s);
     $("f-details").placeholder = s ? s.detailsHint : "Նկարագրիր գաղափարդ՝ ում համար է, ինչ առիթով, ինչ ոճով…";
     var hint = "Մինչև " + cfg.maxPhotos + " նկար։ Մեծ նկարները ավտոմատ կփոքրացվեն, բոլորը միասին՝ մինչև " + cfg.maxUploadMB + " ՄԲ։";
     var label = "Լուսանկարներ";
@@ -126,7 +142,47 @@
     $("photos-hint").textContent = hint;
   }
 
+  function renderPackages(service) {
+    var box = $("package-chips");
+    box.innerHTML = "";
+    $("package-field").hidden = !service;
+    if (!service) { state.packageId = ""; updatePackagePrice(); return; }
+    if (!findPkg(service, state.packageId)) state.packageId = "";
+    if (!state.packageId && service.packages.length === 1) state.packageId = service.packages[0].id;
+    service.packages.forEach(function (p) {
+      var id = "pkg-" + p.id;
+      var input = el("input", { type: "radio", name: "pkg", value: p.id, id: id });
+      if (p.id === state.packageId) input.checked = true;
+      input.addEventListener("change", function () {
+        state.packageId = p.id;
+        clearError("package");
+        updatePackagePrice();
+      });
+      box.appendChild(el("label", { class: "pkg-option", for: id }, [
+        input,
+        el("span", { class: "pkg-body" }, [
+          el("span", { class: "pkg-title", text: p.title }),
+          promoActive(p) ? el("span", { class: "pkg-promo", text: p.promoNote }) : null,
+          el("span", { class: "pkg-price", text: pkgPriceText(p) })
+        ])
+      ]));
+    });
+    updatePackagePrice();
+  }
+
+  function updatePackagePrice() {
+    var service = findService($("f-service").value);
+    var pkg = findPkg(service, state.packageId);
+    var hint = $("service-price");
+    if (!pkg) { hint.textContent = ""; return; }
+    var amount = P.activePrice(pkg, new Date());
+    hint.textContent = amount !== null
+      ? "Արժեքը՝ " + pkgPriceText(pkg)
+      : pkgPriceText(pkg) + " — արժեքը կճշտենք քեզ հետ, քարտից գումար չի գանձվի։";
+  }
+
   function selectService(id) {
+    if ($("f-service").value !== id) state.packageId = "";
     $("f-service").value = id;
     updateServiceInfo();
     clearError("service");
@@ -230,13 +286,13 @@
 
   /* ---------- Ստուգում ---------- */
 
-  var FIELD_INPUT = { name: "f-name", contact: "f-contact", service: "f-service", date: "f-date", details: "f-details", language: "lang-hy", photos: "f-photos" };
+  var FIELD_INPUT = { name: "f-name", contact: "f-contact", service: "f-service", package: "package-chips", date: "f-date", details: "f-details", language: "lang-hy", photos: "f-photos" };
 
   function showError(key, msg) {
     var e = $("e-" + key);
     e.textContent = msg;
     var input = $(FIELD_INPUT[key]);
-    if (input && key !== "language" && key !== "photos") {
+    if (input && key !== "language" && key !== "photos" && key !== "package") {
       input.setAttribute("aria-invalid", "true");
       input.setAttribute("aria-describedby", "e-" + key);
     }
@@ -284,6 +340,9 @@
 
     if (!service) errors.service = "Ընտրիր, թե որ ծառայությունն ես ուզում պատվիրել։";
 
+    var pkg = findPkg(service, state.packageId);
+    if (service && !pkg) errors.package = "Ընտրիր փաթեթը (տևողությունը կամ տարբերակը)։";
+
     if (!state.language) errors.language = "Ընտրիր լեզուն, որով պետք է պատրաստվի աշխատանքը։";
 
     if (!date) {
@@ -329,7 +388,10 @@
       contact: contact,
       serviceId: service.id,
       serviceTitle: service.title,
-      price: priceText(service),
+      packageId: pkg.id,
+      packageTitle: pkg.title,
+      amount: P.activePrice(pkg, new Date()),
+      price: pkgPriceText(pkg),
       language: state.language,
       languageLabel: cfg.languages.filter(function (l) { return l.id === state.language; })[0].label,
       date: date,
@@ -362,7 +424,8 @@
       ["Անուն", order.name],
       ["Կապ", order.contact],
       ["Ծառայություն", order.serviceTitle],
-      ["Արժեք", order.price],
+      ["Փաթեթ", order.packageTitle],
+      ["Արժեք", order.amount !== null ? order.price : order.price + " — կկապվենք քեզ հետ"],
       ["Լեզու", order.languageLabel],
       ["Պատրաստ լինելու ամսաթիվ", formatDate(order.date)],
       ["Մանրամասներ", order.details],
@@ -383,12 +446,14 @@
       body.appendChild(el("p", { class: "demo-note small", html: "<b>Փորձնական ռեժիմ։</b> «Ուղարկել» սեղմելուց հետո պատվերը <b>չի</b> ուղարկվի և <b>չի</b> պահպանվի։" }));
     }
 
-    var service = findService(order.serviceId);
-    var canPay = payable(service);
+    var canPay = payable(order);
+    if (order.amount === null) {
+      body.appendChild(el("p", { class: "demo-note small", text: "Այս տարբերակի արժեքը ճշտվում է անհատապես։ Ուղարկիր հայտը, մենք կկապվենք քեզ հետ և կհաստատենք գինը։ Քարտից գումար չի գանձվի։" }));
+    }
     if (canPay) {
       var payBox = el("div", { class: "pay-box" }, [
         el("p", { class: "muted", text: "Վճարման ենթակա գումար" }),
-        el("p", { class: "pay-amount", text: priceText(service) }),
+        el("p", { class: "pay-amount", text: order.price }),
         el("p", { class: "hint", text: "Վճարումը կատարվում է բանկի ապահով էջում։ Քարտի տվյալները մեր կայքը չի տեսնում։" })
       ]);
       if (state.payments.test) {
@@ -403,7 +468,7 @@
     $("confirm-pay").disabled = false;
     $("confirm-pay").textContent = "Պատվիրել և վճարել քարտով";
     $("confirm-send").disabled = false;
-    $("confirm-send").textContent = canPay ? "Ուղարկել առանց վճարման" : "Ուղարկել պատվերը";
+    $("confirm-send").textContent = canPay ? "Ուղարկել առանց վճարման" : (order.amount === null ? "Ուղարկել հայտը" : "Ուղարկել պատվերը");
     $("confirm-send").className = "btn btn-wide " + (canPay ? "btn-ghost" : "btn-primary");
 
     lastFocus = document.activeElement;
@@ -444,6 +509,7 @@
   function resetForm() {
     $("order-form").reset();
     state.language = "";
+    state.packageId = "";
     state.photos.forEach(function (p) { URL.revokeObjectURL(p.url); });
     state.photos = [];
     renderPreviews();
@@ -453,11 +519,9 @@
 
   var sending = false;
 
-  // Քարտով վճարում՝ միայն հաստատված վերջնական գնով ծառայության համար,
-  // և միայն եթե սերվերը միացրել է վճարումները։
-  function payable(service) {
-    return Boolean(service && !cfg.demoMode && state.payments.enabled &&
-      typeof service.price === "number" && service.price > 0 && !service.priceFrom);
+  // Քարտով վճարում՝ միայն գործող գնով փաթեթի համար (սերվերը նորից է ստուգում)
+  function payable(order) {
+    return Boolean(order && !cfg.demoMode && state.payments.enabled && typeof order.amount === "number" && order.amount > 0);
   }
 
   function loadPaymentConfig() {
@@ -490,6 +554,8 @@
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           serviceId: currentOrder.serviceId,
+          packageId: currentOrder.packageId,
+          expectedAmount: currentOrder.amount,
           language: currentOrder.language,
           name: currentOrder.name,
           contact: currentOrder.contact
@@ -523,7 +589,7 @@
     btn.disabled = true;
     btn.textContent = "Ուղարկվում է…";
     if (!currentOrder.orderNumber) currentOrder.orderNumber = makeOrderNumber();
-    currentOrder.payment = "Առանց առցանց վճարման";
+    currentOrder.payment = currentOrder.amount === null ? "Արժեքը ճշտել — հայտ առանց քարտային գանձման" : "Առանց առցանց վճարման";
     var res = await window.AIQEZ_submitOrder(currentOrder, state.photos.map(function (p) { return p.file; }));
     sending = false;
 

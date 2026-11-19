@@ -64,6 +64,7 @@
           <input type="hidden" name="photo_count">
           <input type="hidden" name="language">
           <input type="hidden" name="payment">
+          <input type="hidden" name="package">
           <input type="file" name="photo1" tabindex="-1">
           <input type="file" name="photo2" tabindex="-1">
           <input type="file" name="photo3" tabindex="-1">
@@ -88,9 +89,15 @@
         <div class="field">
           <label for="f-service">Ծառայություն <span class="req">*</span></label>
           <select id="f-service" name="service"></select>
-          <p class="hint price-hint" id="service-price"></p>
           <p class="err" id="e-service"></p>
         </div>
+
+        <fieldset class="field" id="package-field" hidden>
+          <legend>Փաթեթ <span class="req">*</span></legend>
+          <div class="pkg-options" id="package-chips"></div>
+          <p class="hint price-hint" id="service-price"></p>
+          <p class="err" id="e-package"></p>
+        </fieldset>
 
         <fieldset class="field">
           <legend>Լեզու <span class="req">*</span></legend>
@@ -153,6 +160,7 @@
   </div>
 
   <script src="config.js"></script>
+  <script src="pricing.js"></script>
   <script src="order-service.js"></script>
   <script src="app.js"></script>
 </body>

@@ -27,6 +27,7 @@ window.AIQEZ_submitOrder = async function submitOrder(order, photos) {
   body.append("name", order.name);
   body.append("contact", order.contact);
   body.append("service", order.serviceTitle);
+  body.append("package", order.packageTitle || "");
   body.append("price", order.price);
   body.append("language", order.languageLabel);
   body.append("date", order.dateLabel);

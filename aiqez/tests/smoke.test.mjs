@@ -52,9 +52,13 @@ function futureISO(days) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-async function openPage({ demo }) {
+// Ժամը ֆիքսված է, որպեսզի ակցիայի (մինչև նոյեմբերի 30) ստուգումները կախված չլինեն այսօրվա օրից։
+const IN_PROMO = "2026-11-20T12:00:00+04:00";
+
+async function openPage({ demo, now = IN_PROMO }) {
   const ctx = await browser.newContext({ ...devices["Galaxy S9+"] });
   const page = await ctx.newPage();
+  await page.clock.setFixedTime(new Date(now));
   const jsErrors = [];
   page.on("pageerror", (e) => jsErrors.push(e.message));
   // Ռեժիմը ստուգման համար փոխում ենք config.js-ի պատասխանում, ֆայլը չի փոխվում։
@@ -67,8 +71,9 @@ async function openPage({ demo }) {
   return { page, ctx, jsErrors };
 }
 
-async function fillValid(page, service = "portrait") {
+async function fillValid(page, service = "portrait", pkg = "portrait-1") {
   await page.selectOption("#f-service", service);
+  if (pkg) await page.locator(`label[for="pkg-${pkg}"]`).click();
   await page.fill("#f-name", "Անի");
   await page.fill("#f-contact", "@ani_test");
   await page.locator('label[for="lang-ru"]').click();
@@ -89,10 +94,14 @@ async function fillValid(page, service = "portrait") {
     if (shotDir) await page.screenshot({ path: path.join(shotDir, "1-home.png") });
   });
 
-  await step("4 ծառայություն, գին՝ «Արժեքը՝ ըստ պատվերի»", async () => {
+  await step("4 ծառայություն՝ փաթեթներով և գներով", async () => {
     assert.equal(await page.locator(".card").count(), 4);
-    const prices = await page.locator(".card .price").allInnerTexts();
-    assert.ok(prices.every((p) => p === "Արժեքը՝ ըստ պատվերի"));
+    assert.deepEqual(await page.locator(".card .price").allInnerTexts(),
+      ["սկսած 15 000 ֏", "սկսած 10 000 ֏", "սկսած 5 000 ֏", "10 000 ֏"]);
+    const video = await page.locator(".card").nth(1).locator(".pkg-list").innerText();
+    for (const s of ["Կարճ՝ 15 վայրկյան", "10 000 ֏", "3 րոպե", "35 000 ֏", "Ավելի երկար կամ հատուկ նախագիծ", "Արժեքը ճշտել"]) assert.ok(video.includes(s), s);
+    assert.match(await page.locator(".card").nth(3).innerText(), /Ակցիա՝ մինչև նոյեմբերի 30-ը ներառյալ/);
+    if (shotDir) { await page.locator("#services").scrollIntoViewIfNeeded(); await page.screenshot({ path: path.join(shotDir, "2-services.png") }); }
   });
 
   await step("Ծառայությունից անցում ձևին՝ ընտրված ծառայությամբ", async () => {
@@ -143,7 +152,7 @@ async function fillValid(page, service = "portrait") {
     await page.locator('#order-form button[type="submit"]').click();
     await page.waitForSelector("#summary:not([hidden])");
     const text = await page.locator("#summary-body").innerText();
-    for (const s of ["Անի", "@ani_test", "AI դիմանկար և ֆոտոշարք", "Ռուսերեն", "1 հատ", "Արժեքը՝ ըստ պատվերի"]) assert.ok(text.includes(s), s);
+    for (const s of ["Անի", "@ani_test", "AI դիմանկար և ֆոտոշարք", "Մեկ նկար", "Ռուսերեն", "1 հատ", "5 000 ֏"]) assert.ok(text.includes(s), s);
     assert.equal(await page.locator(".summary-thumbs img").count(), 1);
   });
 
@@ -215,7 +224,8 @@ async function fillValid(page, service = "portrait") {
     assert.equal(field("contact"), "@ani_test");
     assert.equal(field("service"), "AI դիմանկար և ֆոտոշարք");
     assert.equal(field("language"), "Ռուսերեն");
-    assert.equal(field("price"), "Արժեքը՝ ըստ պատվերի");
+    assert.equal(field("price"), "5 000 ֏");
+    assert.equal(field("package"), "Մեկ նկար");
     assert.equal(field("photo_count"), "1");
     assert.match(field("date"), /\d{4}թ\./);
     assert.match(field("order_number"), /^AQ-\d{6}-[A-Z0-9]{4}$/);
@@ -234,6 +244,71 @@ async function fillValid(page, service = "portrait") {
   assert.deepEqual(jsErrors, [], "no JS errors (live)");
   await ctx.close();
 }
+
+/* ---------------- Փաթեթներ և ակցիա ---------------- */
+{
+  const { page, ctx, jsErrors } = await openPage({ demo: false });
+
+  await step("Առանց փաթեթի ընտրության պատվերը չի ընդունվում", async () => {
+    await page.locator('.card [data-service="song"]').click();
+    assert.equal(await page.locator("#package-field").isVisible(), true);
+    assert.equal(await page.locator(".pkg-option").count(), 3);
+    await page.locator('#order-form button[type="submit"]').click();
+    assert.match(await page.locator("#e-package").innerText(), /Ընտրիր փաթեթը/);
+  });
+
+  await step("Ընտրված փաթեթի վերջնական գումարը ամփոփման մեջ", async () => {
+    await fillValid(page, "song", "song-2m");
+    assert.match(await page.locator("#service-price").innerText(), /25 000 ֏/);
+    await page.locator('#order-form button[type="submit"]').click();
+    await page.waitForSelector("#summary:not([hidden])");
+    const text = await page.locator("#summary-body").innerText();
+    assert.ok(text.includes("2 րոպե") && text.includes("25 000 ֏"));
+    await page.locator("#summary [data-close]").first().click();
+  });
+
+  await step("«Արժեքը ճշտել» փաթեթ → հայտ առանց գանձման", async () => {
+    const before = posts.length;
+    await fillValid(page, "video", "video-custom");
+    await page.locator('#order-form button[type="submit"]').click();
+    await page.waitForSelector("#summary:not([hidden])");
+    assert.match(await page.locator("#summary-body").innerText(), /Արժեքը ճշտել — կկապվենք/);
+    assert.match(await page.locator("#summary-body").innerText(), /Քարտից գումար չի գանձվի/);
+    assert.equal(await page.locator("#confirm-pay").isHidden(), true);
+    assert.equal(await page.locator("#confirm-send").innerText(), "Ուղարկել հայտը");
+    await page.click("#confirm-send");
+    await page.waitForSelector(".result-ok");
+    const text = posts[before].body.toString("utf8");
+    assert.match(text, /name="package"\r\n\r\nԱվելի երկար կամ հատուկ նախագիծ/);
+    assert.match(text, /name="price"\r\n\r\nԱրժեքը ճշտել/);
+    assert.match(text, /name="payment"\r\n\r\nԱրժեքը ճշտել — հայտ առանց քարտային գանձման/);
+  });
+
+  assert.deepEqual(jsErrors, []);
+  await ctx.close();
+}
+
+await step("Ձմեռ պապ. նոյեմբերի 30, 23:59 (Երևան)՝ 10 000 ֏", async () => {
+  const { page, ctx } = await openPage({ demo: false, now: "2026-11-30T23:59:00+04:00" });
+  assert.equal(await page.locator(".card .price").nth(3).innerText(), "10 000 ֏");
+  await ctx.close();
+});
+
+await step("Ձմեռ պապ. դեկտեմբերի 1, 00:00 (Երևան)՝ «Ճշտել արժեքը», առանց վճարման", async () => {
+  const { page, ctx, jsErrors } = await openPage({ demo: false, now: "2026-12-01T00:00:30+04:00" });
+  assert.equal(await page.locator(".card .price").nth(3).innerText(), "Ճշտել արժեքը");
+  assert.doesNotMatch(await page.locator(".card").nth(3).innerText(), /Ակցիա/);
+  await page.locator('.card [data-service="santa"]').click();
+  assert.match(await page.locator(".pkg-option").innerText(), /Ճշտել արժեքը/);
+  await fillValid(page, "santa", null); // միակ փաթեթը ընտրվում է ինքնաբերաբար
+  await page.fill("#f-date", "2026-12-20"); // էջի ժամը դեկտեմբերի 1 է
+  await page.locator('#order-form button[type="submit"]').click();
+  await page.waitForSelector("#summary:not([hidden])");
+  assert.match(await page.locator("#summary-body").innerText(), /Ճշտել արժեքը — կկապվենք/);
+  assert.equal(await page.locator("#confirm-send").innerText(), "Ուղարկել հայտը");
+  assert.deepEqual(jsErrors, []);
+  await ctx.close();
+});
 
 await browser.close();
 server.close();

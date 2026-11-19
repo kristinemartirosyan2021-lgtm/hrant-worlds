@@ -1,6 +1,7 @@
 // Վճարումների ընդհանուր տրամաբանություն (միայն սերվերում)։
 import crypto from "node:crypto";
 import config from "../../config.js";
+import pricing from "../../pricing.js";
 import { store, PAYMENTS } from "./store.mjs";
 import * as testProvider from "./providers/test.mjs";
 import * as arcaProvider from "./providers/arca.mjs";
@@ -23,17 +24,20 @@ export function paymentConfig() {
   return { enabled, test: enabled ? p.isTest : false, currency: "AMD" };
 }
 
-// Գինը միշտ վերցվում է config.js-ից. հաճախորդից եկած գումարը չի օգտագործվում։
-export function priceFor(serviceId) {
-  const service = config.services.find((s) => s.id === serviceId);
+// Գինը միշտ վերցվում է config.js-ից՝ սերվերի ժամով (ակցիայի ժամկետը ներառյալ)։
+// Հաճախորդից եկած գումարը չի օգտագործվում։
+export function priceFor(serviceId, packageId, now = new Date()) {
+  const service = pricing.findService(config, serviceId);
   if (!service) return { error: "unknown_service" };
-  const ok = typeof service.price === "number" && Number.isFinite(service.price) && service.price > 0 && !service.priceFrom;
-  if (!ok) return { error: "no_fixed_price", service };
-  return { service, amount: service.price };
+  const pkg = pricing.findPackage(service, packageId);
+  if (!pkg) return { error: "unknown_package", service };
+  const amount = pricing.activePrice(pkg, now);
+  if (amount === null) return { error: pricing.isExpired(pkg, now) ? "price_expired" : "no_fixed_price", service, pkg };
+  return { service, pkg, amount };
 }
 
 export function priceLabel(amount) {
-  return String(amount).replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " " + (config.currency || "֏");
+  return pricing.formatAmount(amount, config.currency);
 }
 
 export function siteUrl(req) {
@@ -78,7 +82,7 @@ export function publicView(rec) {
     status: rec.status,
     amount: rec.amount,
     priceLabel: priceLabel(rec.amount),
-    service: rec.serviceTitle,
+    service: rec.serviceTitle + (rec.packageTitle ? " · " + rec.packageTitle : ""),
     test: Boolean(rec.test),
   };
 }
@@ -144,7 +148,7 @@ export async function recordInForms(rec, req) {
     order_number: rec.orderNumber,
     status: statusLabel(rec.status) + (rec.test ? " (ՓՈՐՁՆԱԿԱՆ, գումար չի գանձվել)" : ""),
     amount: priceLabel(rec.amount),
-    service: rec.serviceTitle,
+    service: rec.serviceTitle + (rec.packageTitle ? " · " + rec.packageTitle : ""),
     name: rec.name,
     contact: rec.contact,
     provider: rec.provider,
