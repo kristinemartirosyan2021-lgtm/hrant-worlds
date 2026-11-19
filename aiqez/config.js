@@ -8,8 +8,13 @@
  *  priceFrom: true  → գնի առաջ կավելացվի «սկսած»  (օր.՝ «սկսած 15 000 ֏»)
  *  photosRequired: true    → առանց լուսանկարի պատվերը չի ընդունվի
  *  photosRecommended: true → կցուցադրվի խորհուրդ՝ կցել լուսանկար
+ *
+ * Քարտով վճարումը հասանելի է միայն այն ծառայությունների համար, որոնց
+ * price-ը թիվ է, և priceFrom-ը false է (հաստատված վերջնական գին)։
+ * Սերվերը (Netlify Functions) գումարը վերցնում է հենց այս ֆայլից,
+ * ուստի գինը փոխելուց հետո կայքը պետք է նորից հրապարակել։
  */
-window.AIQEZ_CONFIG = {
+var AIQEZ_CONFIG = {
   studioName: "AIQEZ",
   studioTagline: "Creative AI Studio",
   currency: "֏",
@@ -93,3 +98,7 @@ window.AIQEZ_CONFIG = {
     { id: "en", label: "Անգլերեն" },
   ],
 };
+
+// Կայքի էջերի և սերվերի (Netlify Functions) համար
+if (typeof window !== "undefined") window.AIQEZ_CONFIG = AIQEZ_CONFIG;
+if (typeof module !== "undefined" && module.exports) module.exports = AIQEZ_CONFIG;

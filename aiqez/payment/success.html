@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="hy">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex">
+  <title>Վճարում — AIQEZ</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Armenian:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../styles.css">
+</head>
+<body data-page="success">
+  <header class="top">
+    <a class="logo" href="../" aria-label="AIQEZ գլխավոր">
+      <span class="logo-mark">AIQEZ</span>
+      <span class="logo-sub">Creative AI Studio</span>
+    </a>
+  </header>
+  <main class="section pay-page">
+    <div class="pay-card" id="pay-card" aria-live="polite">
+      <div class="pay-icon pay-wait" aria-hidden="true">…</div>
+      <h1 id="pay-title">Ստուգում ենք վճարումը…</h1>
+      <p id="pay-text">Մի փակիր էջը, սա տևում է մի քանի վայրկյան։</p>
+      <dl class="summary-list" id="pay-details" hidden></dl>
+      <div class="pay-actions" id="pay-actions"></div>
+    </div>
+  </main>
+
+  <!-- Netlify Forms. սերվերը այստեղ է գրանցում հաստատված վճարումները -->
+  <form name="payment" data-netlify="true" hidden>
+    <input name="order_number"><input name="status"><input name="amount"><input name="service">
+    <input name="name"><input name="contact"><input name="provider"><input name="bank_payment_id"><input name="paid_at">
+  </form>
+  <footer class="foot">
+    <p><b>AIQEZ</b> Creative AI Studio</p>
+  </footer>
+  <script src="payment.js"></script>
+</body>
+</html>

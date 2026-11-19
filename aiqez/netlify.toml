@@ -1,0 +1,16 @@
+# AIQEZ կայքի Netlify կարգավորում (Base directory՝ aiqez)
+[build]
+  publish = "."
+  command = ""
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+# Վճարման էջերը չպետք է պահվեն քեշում
+[[headers]]
+  for = "/payment/*"
+  [headers.values]
+    Cache-Control = "no-store"
+    Referrer-Policy = "no-referrer"
+    X-Robots-Tag = "noindex"
