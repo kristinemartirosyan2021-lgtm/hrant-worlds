@@ -14,7 +14,7 @@
   var MONTHS = ["հունվարի", "փետրվարի", "մարտի", "ապրիլի", "մայիսի", "հունիսի",
     "հուլիսի", "օգոստոսի", "սեպտեմբերի", "հոկտեմբերի", "նոյեմբերի", "դեկտեմբերի"];
 
-  var state = { language: "", packageId: "", photos: [], payments: { enabled: false, test: false } }; // photos: [{ file, url }]
+  var state = { language: "", packageId: "", photos: [] }; // photos: [{ file, url }]
 
   /* ---------- Օգնական ֆունկցիաներ ---------- */
 
@@ -178,7 +178,7 @@
     var amount = P.activePrice(pkg, new Date());
     hint.textContent = amount !== null
       ? "Արժեքը՝ " + pkgPriceText(pkg)
-      : pkgPriceText(pkg) + " — արժեքը կճշտենք քեզ հետ, քարտից գումար չի գանձվի։";
+      : pkgPriceText(pkg) + " — արժեքը կճշտենք քեզ հետ։";
   }
 
   function selectService(id) {
@@ -446,30 +446,14 @@
       body.appendChild(el("p", { class: "demo-note small", html: "<b>Փորձնական ռեժիմ։</b> «Ուղարկել» սեղմելուց հետո պատվերը <b>չի</b> ուղարկվի և <b>չի</b> պահպանվի։" }));
     }
 
-    var canPay = payable(order);
     if (order.amount === null) {
-      body.appendChild(el("p", { class: "demo-note small", text: "Այս տարբերակի արժեքը ճշտվում է անհատապես։ Ուղարկիր հայտը, մենք կկապվենք քեզ հետ և կհաստատենք գինը։ Քարտից գումար չի գանձվի։" }));
-    }
-    if (canPay) {
-      var payBox = el("div", { class: "pay-box" }, [
-        el("p", { class: "muted", text: "Վճարման ենթակա գումար" }),
-        el("p", { class: "pay-amount", text: order.price }),
-        el("p", { class: "hint", text: "Վճարումը կատարվում է բանկի ապահով էջում։ Քարտի տվյալները մեր կայքը չի տեսնում։" })
-      ]);
-      if (state.payments.test) {
-        payBox.appendChild(el("p", { class: "demo-note small", html: "<b>Վճարումը փորձնական ռեժիմում է։</b> Իրական գումար չի գանձվի, բանկի փոխարեն կբացվի փորձնական էջ։" }));
-      }
-      body.appendChild(payBox);
+      body.appendChild(el("p", { class: "demo-note small", text: "Այս տարբերակի արժեքը ճշտվում է անհատապես։ Ուղարկիր հայտը, և մենք կկապվենք քեզ հետ՝ գինը հաստատելու համար։" }));
     }
 
     $("summary-result").innerHTML = "";
     $("summary-actions").hidden = false;
-    $("confirm-pay").hidden = !canPay;
-    $("confirm-pay").disabled = false;
-    $("confirm-pay").textContent = "Պատվիրել և վճարել քարտով";
     $("confirm-send").disabled = false;
-    $("confirm-send").textContent = canPay ? "Ուղարկել առանց վճարման" : (order.amount === null ? "Ուղարկել հայտը" : "Ուղարկել պատվերը");
-    $("confirm-send").className = "btn btn-wide " + (canPay ? "btn-ghost" : "btn-primary");
+    $("confirm-send").textContent = order.amount === null ? "Ուղարկել հայտը" : "Ուղարկել պատվերը";
 
     lastFocus = document.activeElement;
     $("summary").hidden = false;
@@ -519,69 +503,6 @@
 
   var sending = false;
 
-  // Քարտով վճարում՝ միայն գործող գնով փաթեթի համար (սերվերը նորից է ստուգում)
-  function payable(order) {
-    return Boolean(order && !cfg.demoMode && state.payments.enabled && typeof order.amount === "number" && order.amount > 0);
-  }
-
-  function loadPaymentConfig() {
-    if (!/^https?:$/.test(location.protocol)) return;
-    fetch("/.netlify/functions/payment-config", { cache: "no-store" })
-      .then(function (r) { return r.ok ? r.json() : null; })
-      .then(function (d) { if (d && typeof d.enabled === "boolean") state.payments = d; })
-      .catch(function () { /* վճարումը մնում է անջատված */ });
-  }
-
-  async function payAndOrder() {
-    if (sending) return;
-    sending = true;
-    var btn = $("confirm-pay");
-    btn.disabled = true;
-    $("confirm-send").disabled = true;
-    btn.textContent = "Բացվում է վճարման էջը…";
-    var fail = function (msg) {
-      sending = false;
-      btn.disabled = false;
-      $("confirm-send").disabled = false;
-      btn.textContent = "Պատվիրել և վճարել քարտով";
-      showResult("error", "Վճարումը չսկսվեց", msg);
-    };
-
-    var d = null;
-    try {
-      var r = await fetch("/.netlify/functions/create-payment", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          serviceId: currentOrder.serviceId,
-          packageId: currentOrder.packageId,
-          expectedAmount: currentOrder.amount,
-          language: currentOrder.language,
-          name: currentOrder.name,
-          contact: currentOrder.contact
-        })
-      });
-      d = await r.json();
-    } catch (e) { d = null; }
-    if (!d || !d.paymentUrl) {
-      fail((d && d.message) || "Չհաջողվեց կապ հաստատել վճարման համակարգի հետ։ Ստուգիր ինտերնետը և փորձիր նորից։");
-      return;
-    }
-
-    // Պատվերը (նկարներով) պահվում է Netlify Forms-ում սերվերի տված համարով,
-    // հետո հաճախորդը անցնում է բանկի էջ։
-    currentOrder.orderNumber = d.order;
-    currentOrder.price = d.priceLabel;
-    currentOrder.payment = "Քարտով՝ " + d.priceLabel + " — սպասում է բանկի հաստատմանը" + (d.test ? " (ՓՈՐՁՆԱԿԱՆ)" : "");
-    var res = await window.AIQEZ_submitOrder(currentOrder, state.photos.map(function (p) { return p.file; }));
-    if (res.status !== "ok") {
-      fail("Պատվերը չհաջողվեց պահպանել, ուստի վճարումը չսկսվեց։ Ստուգիր ինտերնետը և փորձիր նորից։");
-      return;
-    }
-    btn.textContent = "Անցում բանկի էջ…";
-    location.assign(d.paymentUrl);
-  }
-
   async function send() {
     if (sending) return;
     sending = true;
@@ -589,7 +510,6 @@
     btn.disabled = true;
     btn.textContent = "Ուղարկվում է…";
     if (!currentOrder.orderNumber) currentOrder.orderNumber = makeOrderNumber();
-    currentOrder.payment = currentOrder.amount === null ? "Արժեքը ճշտել — հայտ առանց քարտային գանձման" : "Առանց առցանց վճարման";
     var res = await window.AIQEZ_submitOrder(currentOrder, state.photos.map(function (p) { return p.file; }));
     sending = false;
 
@@ -597,12 +517,8 @@
       showResult("demo", "Պատվերը չի ուղարկվել",
         "Կայքը փորձնական ռեժիմում է. տվյալների պահպանման կապը դեռ միացված չէ, ուստի պատվերը ոչ մի տեղ չի ուղարկվել և չի պահպանվել։ Լրացրած տվյալները մնում են ձևում։");
     } else if (res.status === "ok") {
-      var extra = null;
-      if (res.paymentUrl && /^https:\/\//.test(res.paymentUrl)) {
-        extra = el("a", { class: "btn btn-primary btn-wide", href: res.paymentUrl, rel: "noopener", text: "Անցնել անվտանգ վճարման" });
-      }
-      showResult("ok", "Պատվերն ընդունված է",
-        "Պատվերի համարը՝ " + res.orderId + "։ Շուտով կկապվենք քեզ հետ՝ " + currentOrder.contact + " կոնտակտով, մանրամասները և արժեքը ճշտելու համար։", extra);
+      showResult("ok", "Պատվերը ստացվել է։ Շուտով կապ կհաստատենք ձեզ հետ։",
+        "Պատվերի համարը՝ " + res.orderId + "։");
       resetForm();
       currentOrder = null;
     } else {
@@ -649,13 +565,11 @@
     });
 
     $("confirm-send").addEventListener("click", send);
-    $("confirm-pay").addEventListener("click", payAndOrder);
   }
 
   if (!cfg.demoMode) {
     Array.prototype.forEach.call(document.querySelectorAll("[data-demo-only]"), function (n) { n.hidden = true; });
   }
-  loadPaymentConfig();
   renderServices();
   renderFormOptions();
   bind();

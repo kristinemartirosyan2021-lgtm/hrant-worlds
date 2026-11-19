@@ -231,7 +231,9 @@ async function fillValid(page, service = "portrait", pkg = "portrait-1") {
     assert.match(field("order_number"), /^AQ-\d{6}-[A-Z0-9]{4}$/);
     assert.match(text, /name="photo1"; filename="big-photo\.jpg"\r\nContent-Type: image\/jpeg/);
     assert.ok(body.length < 3 * 1024 * 1024, "compressed upload: " + body.length);
+    assert.equal(await page.locator(".result-ok h3").innerText(), "Պատվերը ստացվել է։ Շուտով կապ կհաստատենք ձեզ հետ։");
     assert.match(await page.locator(".result-ok p").innerText(), new RegExp(field("order_number")));
+    assert.doesNotMatch(text, /name="payment"/);
     if (shotDir) await page.screenshot({ path: path.join(shotDir, "6-live-ok.png") });
   });
 
@@ -273,15 +275,15 @@ async function fillValid(page, service = "portrait", pkg = "portrait-1") {
     await page.locator('#order-form button[type="submit"]').click();
     await page.waitForSelector("#summary:not([hidden])");
     assert.match(await page.locator("#summary-body").innerText(), /Արժեքը ճշտել — կկապվենք/);
-    assert.match(await page.locator("#summary-body").innerText(), /Քարտից գումար չի գանձվի/);
-    assert.equal(await page.locator("#confirm-pay").isHidden(), true);
+    assert.match(await page.locator("#summary-body").innerText(), /մենք կկապվենք քեզ հետ՝ գինը հաստատելու համար/);
+    assert.equal(await page.locator("#confirm-pay").count(), 0, "no card payment button");
     assert.equal(await page.locator("#confirm-send").innerText(), "Ուղարկել հայտը");
     await page.click("#confirm-send");
     await page.waitForSelector(".result-ok");
     const text = posts[before].body.toString("utf8");
     assert.match(text, /name="package"\r\n\r\nԱվելի երկար կամ հատուկ նախագիծ/);
     assert.match(text, /name="price"\r\n\r\nԱրժեքը ճշտել/);
-    assert.match(text, /name="payment"\r\n\r\nԱրժեքը ճշտել — հայտ առանց քարտային գանձման/);
+    assert.doesNotMatch(text, /name="payment"/);
   });
 
   assert.deepEqual(jsErrors, []);
@@ -294,7 +296,7 @@ await step("Ձմեռ պապ. նոյեմբերի 30, 23:59 (Երևան)՝ 10 000 
   await ctx.close();
 });
 
-await step("Ձմեռ պապ. դեկտեմբերի 1, 00:00 (Երևան)՝ «Ճշտել արժեքը», առանց վճարման", async () => {
+await step("Ձմեռ պապ. դեկտեմբերի 1, 00:00 (Երևան)՝ «Ճշտել արժեքը»", async () => {
   const { page, ctx, jsErrors } = await openPage({ demo: false, now: "2026-12-01T00:00:30+04:00" });
   assert.equal(await page.locator(".card .price").nth(3).innerText(), "Ճշտել արժեքը");
   assert.doesNotMatch(await page.locator(".card").nth(3).innerText(), /Ակցիա/);

@@ -8,9 +8,6 @@
  *
  * Դաշտերի անունները պետք է համընկնեն index.html-ի «order» ձևի դաշտերին,
  * հակառակ դեպքում Netlify-ը դրանք չի պահի։
- *
- * Հետագայում վճարման համար սերվերը կարող է վերադարձնել paymentUrl,
- * որին app.js-ը կուղղորդի հաճախորդին։ Քարտի տվյալները կայքը չի տեսնում։
  */
 window.AIQEZ_submitOrder = async function submitOrder(order, photos) {
   var cfg = window.AIQEZ_CONFIG;
@@ -32,7 +29,6 @@ window.AIQEZ_submitOrder = async function submitOrder(order, photos) {
   body.append("language", order.languageLabel);
   body.append("date", order.dateLabel);
   body.append("details", order.details);
-  body.append("payment", order.payment || "Առանց առցանց վճարման");
   body.append("photo_count", String(photos.length));
   photos.slice(0, cfg.maxPhotos).forEach(function (file, i) {
     body.append("photo" + (i + 1), file, file.name);
