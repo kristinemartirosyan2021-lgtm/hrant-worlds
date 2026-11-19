@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="hy">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#ffffff">
+  <title>AIQEZ — Creative AI Studio</title>
+  <meta name="description" content="Քո գաղափարը՝ անհատական երգի, նկարի կամ վիդեոյի տեսքով։ AI երգեր, տեսանյութեր, դիմանկարներ և Ձմեռ պապի շնորհավորանքներ։">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Armenian:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="demo-bar" role="status">
+    <strong>Փորձնական ռեժիմ</strong> · պատվերները դեռ չեն ուղարկվում և չեն պահպանվում
+  </div>
+
+  <header class="top">
+    <a class="logo" href="#top" aria-label="AIQEZ գլխավոր">
+      <span class="logo-mark">AIQEZ</span>
+      <span class="logo-sub">Creative AI Studio</span>
+    </a>
+    <a class="btn btn-small" href="#order" data-order>Պատվիրել</a>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <p class="eyebrow">AIQEZ Creative AI Studio</p>
+      <h1>Քո գաղափարը՝ անհատական <span class="accent">երգի</span>, <span class="accent">նկարի</span> կամ <span class="accent">վիդեոյի</span> տեսքով</h1>
+      <p class="lead">Պատմիր մեզ քո մտահղացումը, իսկ մենք արհեստական բանականության օգնությամբ այն կդարձնենք յուրահատուկ նվեր կամ ստեղծագործություն։</p>
+      <a class="btn btn-primary btn-wide" href="#order" data-order>Պատվիրել</a>
+      <a class="link-more" href="#services">Դիտել ծառայությունները ↓</a>
+    </section>
+
+    <section id="services" class="section">
+      <h2>Ծառայություններ</h2>
+      <div class="cards" id="service-list"></div>
+    </section>
+
+    <section class="section steps-section">
+      <h2>Ինչպես է աշխատում</h2>
+      <ol class="steps">
+        <li><span class="step-n">1</span><div><b>Ընտրիր ծառայությունը</b><p>Երգ, տեսանյութ, դիմանկար կամ Ձմեռ պապի շնորհավորանք։</p></div></li>
+        <li><span class="step-n">2</span><div><b>Պատմիր գաղափարդ</b><p>Լրացրու ձևը, կցիր լուսանկարներ, եթե անհրաժեշտ է։</p></div></li>
+        <li><span class="step-n">3</span><div><b>Ստացիր պատրաստի աշխատանքը</b><p>Կկապվենք քեզ հետ մանրամասները և արժեքը ճշտելու համար։</p></div></li>
+      </ol>
+    </section>
+
+    <section id="order" class="section order-section">
+      <h2>Պատվերի ձև</h2>
+      <p class="muted">Աստղանիշով (<span class="req">*</span>) դաշտերը պարտադիր են։</p>
+
+      <div class="demo-note">
+        <b>Ուշադրություն․ փորձնական տարբերակ։</b> Ձևը կարող ես փորձել, բայց պատվերն իրականում չի ուղարկվի մեզ և ոչ մի տեղ չի պահպանվի։
+      </div>
+
+      <form id="order-form" novalidate>
+        <div class="error-summary" id="error-summary" tabindex="-1" hidden></div>
+
+        <div class="field">
+          <label for="f-name">Անուն <span class="req">*</span></label>
+          <input id="f-name" name="name" type="text" autocomplete="name" placeholder="Օր.՝ Անի" maxlength="80">
+          <p class="err" id="e-name"></p>
+        </div>
+
+        <div class="field">
+          <label for="f-contact">Հեռախոսահամար կամ Telegram օգտանուն <span class="req">*</span></label>
+          <input id="f-contact" name="contact" type="text" autocomplete="tel" placeholder="+374 99 123456 կամ @username" maxlength="40">
+          <p class="hint">Հեռախոսը՝ երկրի կոդով, Telegram-ը՝ @-ով։</p>
+          <p class="err" id="e-contact"></p>
+        </div>
+
+        <div class="field">
+          <label for="f-service">Ծառայություն <span class="req">*</span></label>
+          <select id="f-service" name="service"></select>
+          <p class="hint price-hint" id="service-price"></p>
+          <p class="err" id="e-service"></p>
+        </div>
+
+        <fieldset class="field">
+          <legend>Լեզու <span class="req">*</span></legend>
+          <div class="chips" id="lang-chips"></div>
+          <p class="err" id="e-language"></p>
+        </fieldset>
+
+        <div class="field">
+          <label for="f-date">Ցանկալի պատրաստ լինելու ամսաթիվ <span class="req">*</span></label>
+          <input id="f-date" name="date" type="date">
+          <p class="err" id="e-date"></p>
+        </div>
+
+        <div class="field">
+          <label for="f-details">Պատվերի մանրամասներ <span class="req">*</span></label>
+          <textarea id="f-details" name="details" rows="5" maxlength="3000"></textarea>
+          <p class="hint"><span id="details-count">0</span> / 3000</p>
+          <p class="err" id="e-details"></p>
+        </div>
+
+        <div class="field">
+          <span class="label" id="photos-label">Լուսանկարներ</span>
+          <p class="hint" id="photos-hint"></p>
+          <label class="upload" for="f-photos">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m0 0-4 4m4-4 4 4M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span>Ընտրել լուսանկարներ</span>
+          </label>
+          <input id="f-photos" class="visually-hidden" type="file" accept="image/*" multiple aria-labelledby="photos-label">
+          <div class="previews" id="previews"></div>
+          <p class="err" id="e-photos"></p>
+        </div>
+
+        <button class="btn btn-primary btn-wide" type="submit">Դիտել ամփոփումը</button>
+      </form>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <p><b>AIQEZ</b> Creative AI Studio</p>
+    <p class="muted">© <span id="year"></span> · Փորձնական տարբերակ</p>
+  </footer>
+
+  <!-- Ամփոփում -->
+  <div class="sheet-backdrop" id="summary" hidden>
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="summary-title">
+      <div class="sheet-head">
+        <h2 id="summary-title">Պատվերի ամփոփում</h2>
+        <button class="icon-btn" type="button" data-close aria-label="Փակել">×</button>
+      </div>
+      <div id="summary-body"></div>
+      <div id="summary-result"></div>
+      <div class="sheet-actions" id="summary-actions">
+        <button class="btn btn-primary btn-wide" type="button" id="confirm-send">Ուղարկել պատվերը</button>
+        <button class="btn btn-ghost btn-wide" type="button" data-close>Վերադառնալ և խմբագրել</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="order-service.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

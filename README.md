@@ -41,6 +41,10 @@
 Հիմնական խաղային կոդը՝ `app/game.tsx`  
 Դիզայնը՝ `app/globals.css`
 
+## 🎨 AIQEZ պատվերների կայք
+
+AIQEZ Creative AI Studio-ի պատվերների կայքի փորձնական տարբերակը գտնվում է [`aiqez/`](aiqez/README.md) թղթապանակում։
+
 ## ✍️ Հեղինակ
 
 **Hrant Worlds**-ը ստեղծել է **Kristine Martirosyan**-ը ([@kristinemartirosyan2021-lgtm](https://github.com/kristinemartirosyan2021-lgtm))։
