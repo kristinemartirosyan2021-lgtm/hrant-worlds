@@ -257,3 +257,5 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 
 /* Կպչուն վերնագիրը չծածկի այն բլոկը, որին սքրոլ ենք անում */
 section[id], .field, .error-summary { scroll-margin-top: 84px; }
+
+[hidden] { display: none !important; }

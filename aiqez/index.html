@@ -12,7 +12,7 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div class="demo-bar" role="status">
+  <div class="demo-bar" role="status" data-demo-only>
     <strong>Փորձնական ռեժիմ</strong> · պատվերները դեռ չեն ուղարկվում և չեն պահպանվում
   </div>
 
@@ -51,11 +51,25 @@
       <h2>Պատվերի ձև</h2>
       <p class="muted">Աստղանիշով (<span class="req">*</span>) դաշտերը պարտադիր են։</p>
 
-      <div class="demo-note">
+      <div class="demo-note" data-demo-only>
         <b>Ուշադրություն․ փորձնական տարբերակ։</b> Ձևը կարող ես փորձել, բայց պատվերն իրականում չի ուղարկվի մեզ և ոչ մի տեղ չի պահպանվի։
       </div>
 
-      <form id="order-form" novalidate>
+      <form id="order-form" name="order" method="POST" action="/" enctype="multipart/form-data" data-netlify="true" netlify-honeypot="bot-field" novalidate>
+        <!-- Netlify Forms-ի համար. դաշտերը լրացնում է app.js-ը ուղարկելիս -->
+        <p class="visually-hidden" aria-hidden="true"><label>Մի լրացրու այս դաշտը <input name="bot-field" tabindex="-1" autocomplete="off"></label></p>
+        <div hidden>
+          <input type="hidden" name="order_number">
+          <input type="hidden" name="price">
+          <input type="hidden" name="photo_count">
+          <input type="hidden" name="ready_date">
+          <input type="hidden" name="language">
+          <input type="file" name="photo1" tabindex="-1">
+          <input type="file" name="photo2" tabindex="-1">
+          <input type="file" name="photo3" tabindex="-1">
+          <input type="file" name="photo4" tabindex="-1">
+          <input type="file" name="photo5" tabindex="-1">
+        </div>
         <div class="error-summary" id="error-summary" tabindex="-1" hidden></div>
 
         <div class="field">
@@ -105,10 +119,12 @@
             <span>Ընտրել լուսանկարներ</span>
           </label>
           <input id="f-photos" class="visually-hidden" type="file" accept="image/*" multiple aria-labelledby="photos-label">
+          <p class="hint" id="photos-busy" hidden>Նկարները մշակվում են…</p>
           <div class="previews" id="previews"></div>
           <p class="err" id="e-photos"></p>
         </div>
 
+        <p class="hint consent">Ուղարկելով պատվերը՝ համաձայնում ես, որ քո տվյալներն ու լուսանկարները կօգտագործվեն միայն այս պատվերը կատարելու և քեզ հետ կապվելու համար։</p>
         <button class="btn btn-primary btn-wide" type="submit">Դիտել ամփոփումը</button>
       </form>
     </section>
@@ -116,7 +132,7 @@
 
   <footer class="foot">
     <p><b>AIQEZ</b> Creative AI Studio</p>
-    <p class="muted">© <span id="year"></span> · Փորձնական տարբերակ</p>
+    <p class="muted">© <span id="year"></span><span data-demo-only> · Փորձնական տարբերակ</span></p>
   </footer>
 
   <!-- Ամփոփում -->

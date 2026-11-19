@@ -112,7 +112,7 @@
     var s = findService($("f-service").value);
     $("service-price").textContent = s ? priceText(s) : "";
     $("f-details").placeholder = s ? s.detailsHint : "Նկարագրիր գաղափարդ՝ ում համար է, ինչ առիթով, ինչ ոճով…";
-    var hint = "Մինչև " + cfg.maxPhotos + " նկար, յուրաքանչյուրը մինչև " + cfg.maxPhotoSizeMB + " ՄԲ։";
+    var hint = "Մինչև " + cfg.maxPhotos + " նկար։ Մեծ նկարները ավտոմատ կփոքրացվեն, բոլորը միասին՝ մինչև " + cfg.maxUploadMB + " ՄԲ։";
     var label = "Լուսանկարներ";
     if (s && s.photosRequired) {
       label = 'Լուսանկարներ <span class="req">*</span>';
@@ -134,21 +134,72 @@
 
   /* ---------- Լուսանկարներ ---------- */
 
-  function addPhotos(fileList) {
+  // Նկարը փոքրացնում է մինչև photoMaxSide պիքսել և վերածում JPEG-ի։
+  // Եթե բրաուզերը չի կարողանում բացել ֆայլը (օր.՝ HEIC), թողնում է բնօրինակը։
+  function compressImage(file) {
+    return new Promise(function (resolve) {
+      var url = URL.createObjectURL(file);
+      var img = new Image();
+      img.onload = function () {
+        var w = img.naturalWidth, h = img.naturalHeight;
+        var scale = Math.min(1, cfg.photoMaxSide / Math.max(w, h));
+        if (scale === 1 && file.type === "image/jpeg" && file.size <= 1.5 * 1024 * 1024) {
+          URL.revokeObjectURL(url); resolve(file); return;
+        }
+        var canvas = document.createElement("canvas");
+        canvas.width = Math.round(w * scale);
+        canvas.height = Math.round(h * scale);
+        var ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        URL.revokeObjectURL(url);
+        canvas.toBlob(function (blob) {
+          if (!blob || blob.size >= file.size) { resolve(file); return; }
+          var base = file.name.replace(/\.[^.]+$/, "") || "photo";
+          resolve(new File([blob], base + ".jpg", { type: "image/jpeg" }));
+        }, "image/jpeg", cfg.photoQuality);
+      };
+      img.onerror = function () { URL.revokeObjectURL(url); resolve(file); };
+      img.src = url;
+    });
+  }
+
+  function totalPhotoBytes() {
+    return state.photos.reduce(function (sum, p) { return sum + p.file.size; }, 0);
+  }
+
+  async function addPhotos(fileList) {
     var problems = [];
-    Array.prototype.forEach.call(fileList, function (file) {
+    var files = Array.prototype.slice.call(fileList);
+    state.processing = true;
+    $("photos-busy").hidden = false;
+    for (var i = 0; i < files.length; i++) {
+      var file = files[i];
       if (!/^image\//.test(file.type)) {
         problems.push("«" + file.name + "» ֆայլը նկար չէ։ Ընտրիր միայն լուսանկարներ (JPG, PNG, HEIC…)։");
-      } else if (file.size > cfg.maxPhotoSizeMB * 1024 * 1024) {
-        problems.push("«" + file.name + "» նկարը շատ մեծ է (" + formatSize(file.size) + ")։ Առավելագույնը՝ " + cfg.maxPhotoSizeMB + " ՄԲ։");
-      } else if (state.photos.length >= cfg.maxPhotos) {
-        problems.push("Կարելի է կցել առավելագույնը " + cfg.maxPhotos + " լուսանկար։ «" + file.name + "»-ը չավելացվեց։");
-      } else if (state.photos.some(function (p) { return p.file.name === file.name && p.file.size === file.size; })) {
-        // կրկնվող նկարը լուռ բաց ենք թողնում
-      } else {
-        state.photos.push({ file: file, url: URL.createObjectURL(file) });
+        continue;
       }
-    });
+      if (file.size > cfg.maxPhotoSizeMB * 1024 * 1024) {
+        problems.push("«" + file.name + "» նկարը շատ մեծ է (" + formatSize(file.size) + ")։ Առավելագույնը՝ " + cfg.maxPhotoSizeMB + " ՄԲ։");
+        continue;
+      }
+      if (state.photos.length >= cfg.maxPhotos) {
+        problems.push("Կարելի է կցել առավելագույնը " + cfg.maxPhotos + " լուսանկար։ «" + file.name + "»-ը չավելացվեց։");
+        continue;
+      }
+      if (state.photos.some(function (p) { return p.origName === file.name && p.origSize === file.size; })) {
+        continue; // կրկնվող նկարը լուռ բաց ենք թողնում
+      }
+      var ready = await compressImage(file);
+      if (totalPhotoBytes() + ready.size > cfg.maxUploadMB * 1024 * 1024) {
+        problems.push("«" + file.name + "»-ը չավելացվեց. բոլոր նկարները միասին պետք է լինեն մինչև " + cfg.maxUploadMB + " ՄԲ։ Հեռացրու մեկ նկար կամ ընտրիր ավելի փոքրը։");
+        continue;
+      }
+      state.photos.push({ file: ready, origName: file.name, origSize: file.size, url: URL.createObjectURL(ready) });
+    }
+    state.processing = false;
+    $("photos-busy").hidden = true;
     renderPreviews();
     if (problems.length) showError("photos", problems.join(" "));
     else clearError("photos");
@@ -173,7 +224,7 @@
       ]));
     });
     if (state.photos.length) {
-      box.appendChild(el("p", { class: "hint previews-count", text: "Ընտրված է " + state.photos.length + " / " + cfg.maxPhotos }));
+      box.appendChild(el("p", { class: "hint previews-count", text: "Ընտրված է " + state.photos.length + " / " + cfg.maxPhotos + " · " + formatSize(totalPhotoBytes()) + " / " + cfg.maxUploadMB + " ՄԲ" }));
     }
   }
 
@@ -282,6 +333,7 @@
       language: state.language,
       languageLabel: cfg.languages.filter(function (l) { return l.id === state.language; })[0].label,
       date: date,
+      dateLabel: formatDate(date),
       details: details,
       photoCount: state.photos.length,
       createdAt: new Date().toISOString()
@@ -327,7 +379,7 @@
       body.appendChild(thumbs);
     }
 
-    if (cfg.demoMode || !cfg.orderEndpoint) {
+    if (cfg.demoMode) {
       body.appendChild(el("p", { class: "demo-note small", html: "<b>Փորձնական ռեժիմ։</b> «Ուղարկել» սեղմելուց հետո պատվերը <b>չի</b> ուղարկվի և <b>չի</b> պահպանվի։" }));
     }
 
@@ -364,11 +416,34 @@
     box.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }
 
+  function makeOrderNumber() {
+    var d = new Date();
+    var pad = function (n) { return String(n).padStart(2, "0"); };
+    var rnd = Math.random().toString(36).slice(2, 6).toUpperCase();
+    return "AQ-" + String(d.getFullYear()).slice(2) + pad(d.getMonth() + 1) + pad(d.getDate()) + "-" + rnd;
+  }
+
+  function resetForm() {
+    $("order-form").reset();
+    state.language = "";
+    state.photos.forEach(function (p) { URL.revokeObjectURL(p.url); });
+    state.photos = [];
+    renderPreviews();
+    $("details-count").textContent = "0";
+    updateServiceInfo();
+  }
+
+  var sending = false;
+
   async function send() {
+    if (sending) return;
+    sending = true;
     var btn = $("confirm-send");
     btn.disabled = true;
     btn.textContent = "Ուղարկվում է…";
+    if (!currentOrder.orderNumber) currentOrder.orderNumber = makeOrderNumber();
     var res = await window.AIQEZ_submitOrder(currentOrder, state.photos.map(function (p) { return p.file; }));
+    sending = false;
 
     if (res.status === "demo") {
       showResult("demo", "Պատվերը չի ուղարկվել",
@@ -379,12 +454,16 @@
         extra = el("a", { class: "btn btn-primary btn-wide", href: res.paymentUrl, rel: "noopener", text: "Անցնել անվտանգ վճարման" });
       }
       showResult("ok", "Պատվերն ընդունված է",
-        "Պատվերի համարը՝ " + res.orderId + "։ Շուտով կկապվենք քեզ հետ։", extra);
+        "Պատվերի համարը՝ " + res.orderId + "։ Շուտով կկապվենք քեզ հետ՝ " + currentOrder.contact + " կոնտակտով, մանրամասները և արժեքը ճշտելու համար։", extra);
+      resetForm();
+      currentOrder = null;
     } else {
       btn.disabled = false;
       btn.textContent = "Ուղարկել պատվերը";
-      showResult("error", "Չհաջողվեց ուղարկել",
-        "Ինչ-որ բան սխալ գնաց։ Ստուգիր ինտերնետ կապը և փորձիր նորից։ Տվյալները մնում են ձևում։");
+      var why = res.code === 413
+        ? "Նկարները միասին շատ մեծ են։ Վերադարձիր, հեռացրու մեկ-երկու նկար և փորձիր նորից։"
+        : "Ինչ-որ բան սխալ գնաց։ Ստուգիր ինտերնետ կապը և փորձիր նորից։ Տվյալները մնում են ձևում։";
+      showResult("error", "Չհաջողվեց ուղարկել", why);
     }
   }
 
@@ -413,6 +492,10 @@
 
     $("order-form").addEventListener("submit", function (ev) {
       ev.preventDefault();
+      if (state.processing) {
+        showError("photos", "Սպասիր մի պահ, նկարները դեռ մշակվում են։");
+        return;
+      }
       var order = validate();
       if (order) openSummary(order);
     });
@@ -420,6 +503,9 @@
     $("confirm-send").addEventListener("click", send);
   }
 
+  if (!cfg.demoMode) {
+    Array.prototype.forEach.call(document.querySelectorAll("[data-demo-only]"), function (n) { n.hidden = true; });
+  }
   renderServices();
   renderFormOptions();
   bind();

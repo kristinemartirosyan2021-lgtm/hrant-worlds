@@ -15,17 +15,25 @@ window.AIQEZ_CONFIG = {
   currency: "֏",
 
   /*
-   * Պատվերների ուղարկման ռեժիմ։
+   * Պատվերների ուղարկում։
    *  demoMode: true  → փորձնական ռեժիմ. ոչինչ չի ուղարկվում և չի պահպանվում։
-   *  Իրական պահպանումը միացնելիս՝ demoMode: false և լրացնել orderEndpoint-ը
-   *  (սերվերի հասցեն, որը կպահի պատվերը և ծանուցում կուղարկի)։
+   *  demoMode: false → պատվերը ուղարկվում է Netlify Forms (կայքի «order» ձևը),
+   *                    պահվում է Netlify-ի Forms բաժնում՝ կցված նկարներով։
    */
   demoMode: true,
-  orderEndpoint: null,
+  netlifyFormName: "order",
+  orderEndpoint: "/",
 
-  // Լուսանկարների սահմանափակումներ
-  maxPhotos: 10,
-  maxPhotoSizeMB: 10,
+  /*
+   * Լուսանկարներ։ Netlify Forms-ը ընդունում է մեկ ֆայլ յուրաքանչյուր դաշտում
+   * (photo1…photo5) և մինչև 8 ՄԲ ամբողջ հարցման համար։ Ուղարկելուց առաջ
+   * նկարները փոքրացվում են հեռախոսում (մինչև photoMaxSide պիքսել, JPEG)։
+   */
+  maxPhotos: 5,            // պետք է համապատասխանի index.html-ի photo1…photoN դաշտերին
+  maxPhotoSizeMB: 25,      // մեկ ընտրված նկարի առավելագույն չափը՝ մինչև փոքրացնելը
+  maxUploadMB: 7,          // բոլոր նկարները միասին՝ փոքրացնելուց հետո (Netlify-ի սահմանը՝ 8 ՄԲ)
+  photoMaxSide: 2048,
+  photoQuality: 0.85,
 
   // Պատրաստման նվազագույն ժամկետ (օրերով)՝ ամսաթվի ընտրության համար
   minLeadDays: 1,
