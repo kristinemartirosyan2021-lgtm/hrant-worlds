@@ -175,7 +175,7 @@ async function fillValid(page, service = "portrait") {
     assert.equal(await form.getAttribute("name"), "order");
     assert.equal(await form.getAttribute("data-netlify"), "true");
     assert.equal(await form.getAttribute("enctype"), "multipart/form-data");
-    for (const n of ["name", "contact", "service", "language", "ready_date", "details", "price", "order_number", "photo_count", "bot-field", "photo1", "photo5"]) {
+    for (const n of ["name", "contact", "service", "language", "date", "details", "price", "order_number", "photo_count", "bot-field", "photo1", "photo5"]) {
       assert.equal(await form.locator(`[name="${n}"]`).count() > 0, true, "field " + n);
     }
   });
@@ -217,7 +217,7 @@ async function fillValid(page, service = "portrait") {
     assert.equal(field("language"), "Ռուսերեն");
     assert.equal(field("price"), "Արժեքը՝ ըստ պատվերի");
     assert.equal(field("photo_count"), "1");
-    assert.match(field("ready_date"), /\d{4}թ\./);
+    assert.match(field("date"), /\d{4}թ\./);
     assert.match(field("order_number"), /^AQ-\d{6}-[A-Z0-9]{4}$/);
     assert.match(text, /name="photo1"; filename="big-photo\.jpg"\r\nContent-Type: image\/jpeg/);
     assert.ok(body.length < 3 * 1024 * 1024, "compressed upload: " + body.length);

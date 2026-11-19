@@ -20,7 +20,7 @@ window.AIQEZ_CONFIG = {
    *  demoMode: false → պատվերը ուղարկվում է Netlify Forms (կայքի «order» ձևը),
    *                    պահվում է Netlify-ի Forms բաժնում՝ կցված նկարներով։
    */
-  demoMode: true,
+  demoMode: false,
   netlifyFormName: "order",
   orderEndpoint: "/",
 

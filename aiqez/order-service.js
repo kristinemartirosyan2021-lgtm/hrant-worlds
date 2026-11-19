@@ -29,7 +29,7 @@ window.AIQEZ_submitOrder = async function submitOrder(order, photos) {
   body.append("service", order.serviceTitle);
   body.append("price", order.price);
   body.append("language", order.languageLabel);
-  body.append("ready_date", order.dateLabel);
+  body.append("date", order.dateLabel);
   body.append("details", order.details);
   body.append("photo_count", String(photos.length));
   photos.slice(0, cfg.maxPhotos).forEach(function (file, i) {
