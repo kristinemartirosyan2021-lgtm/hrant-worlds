@@ -1,0 +1,16 @@
+{
+  "name": "Hrant City",
+  "short_name": "Hrant City",
+  "description": "Hrant GTA6 – a sunny low-poly open-world driving game.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#12062a",
+  "theme_color": "#ff2fa8",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

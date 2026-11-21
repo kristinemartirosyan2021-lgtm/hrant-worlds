@@ -1,0 +1,19 @@
+{
+  "name": "hrant-city",
+  "version": "1.0.0",
+  "description": "Hrant City (Hrant GTA6) - a low-poly 3D open-world mobile browser game",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "vite build",
+    "preview": "vite preview --host",
+    "icons": "node scripts/make-icons.mjs"
+  },
+  "dependencies": {
+    "three": "0.170.0"
+  },
+  "devDependencies": {
+    "vite": "6.3.5"
+  }
+}

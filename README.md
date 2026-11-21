@@ -41,6 +41,11 @@
 Հիմնական խաղային կոդը՝ `app/game.tsx`  
 Դիզայնը՝ `app/globals.css`
 
+## 🌴 Hrant City (3D) — նոր խաղ
+
+`hrant-city/` պանակում է **Hrant City**-ն («Hrant GTA6»)՝ 3D բաց աշխարհով մեքենաների խաղ հեռախոսի բրաուզերի համար (Three.js + Vite)։
+Գործարկման, հեռախոսով փորձարկելու և անվճար հրապարակելու հրահանգները՝ [hrant-city/README.md](hrant-city/README.md)։
+
 ## ✍️ Հեղինակ
 
 **Hrant Worlds**-ը ստեղծել է **Kristine Martirosyan**-ը ([@kristinemartirosyan2021-lgtm](https://github.com/kristinemartirosyan2021-lgtm))։
